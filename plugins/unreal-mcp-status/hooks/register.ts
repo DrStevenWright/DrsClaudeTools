@@ -1,18 +1,21 @@
 import type { Register, EngineInterface, PluginOptions } from 'claude-code'
 
-const FALLBACK_ENDPOINT = 'http://127.0.0.1:8000/mcp'
+// The default of the endpoint_url setting, which the plugin's .mcp.json also
+// uses as its server's url (${user_config.endpoint_url}).
+const DEFAULT_ENDPOINT = 'http://127.0.0.1:8000/mcp'
+// The server's key in the plugin's own .mcp.json.
+const SERVER_NAME = 'unreal-mcp'
 const POLL_MS = 15_000
 // Once connected, only every second tick checks again (30 s).
 const CONNECTED_EVERY_N_TICKS = 2
 
-type Settings = { server: string; endpointOverride: string }
+type Settings = { endpoint: string }
 
 function readSettings(options: PluginOptions): Settings {
-  const server = typeof options.server_name === 'string' && options.server_name.trim()
-    ? options.server_name.trim()
-    : 'unreal-mcp'
-  const endpointOverride = typeof options.endpoint_url === 'string' ? options.endpoint_url.trim() : ''
-  return { server, endpointOverride }
+  const endpoint = typeof options.endpoint_url === 'string' && options.endpoint_url.trim()
+    ? options.endpoint_url.trim()
+    : DEFAULT_ENDPOINT
+  return { endpoint }
 }
 
 type ProjectEntry =
@@ -45,7 +48,7 @@ function describeJsonError(text: string, error: unknown): string {
 
 // The server's entry in the project's .mcp.json. The mod stays silent when the
 // project doesn't configure the server, and says so when the file is broken.
-async function projectServerEntry($: EngineInterface, cwd: string, server: string): Promise<ProjectEntry> {
+async function projectServerEntry($: EngineInterface, cwd: string, server: string, pluginUrl: string): Promise<ProjectEntry> {
   let text: string
   try {
     text = await $.fs.read(`${cwd}/.mcp.json`)
@@ -64,7 +67,7 @@ async function projectServerEntry($: EngineInterface, cwd: string, server: strin
   const aliases = Object.entries(servers)
     .filter(([name, value]) => name !== server && value && typeof value === 'object'
       && typeof (value as { url?: unknown }).url === 'string'
-      && normaliseUrl((value as { url: string }).url) === normaliseUrl(PLUGIN_SERVER_URL))
+      && normaliseUrl((value as { url: string }).url) === normaliseUrl(pluginUrl))
     .map(([name]) => name)
   return entry || aliases.length > 0 ? { kind: 'found', entry, aliases } : { kind: 'absent' }
 }
@@ -125,9 +128,6 @@ async function sessionToolSources($: EngineInterface, server: string, projectNam
     return { project: false, plugin: false }
   }
 }
-
-// The URL in this plugin's own .mcp.json.
-const PLUGIN_SERVER_URL = 'http://127.0.0.1:8000/mcp'
 
 function normaliseUrl(url: string): string {
   return url.trim().toLowerCase().replace('://localhost', '://127.0.0.1').replace(/\/+$/, '')
@@ -220,7 +220,7 @@ function describe(probe: Probe, tools: boolean, upAtStart: boolean | undefined, 
 }
 
 async function refresh($: EngineInterface, cwd: string, settings: Settings, state: SessionState): Promise<void> {
-  const project = await projectServerEntry($, cwd, settings.server)
+  const project = await projectServerEntry($, cwd, SERVER_NAME, settings.endpoint)
   toastOnEntry($, state, 'invalid', project.kind === 'unreadable',
     project.kind === 'unreadable' ? invalidJsonToast(project.detail) : '')
   if (project.kind === 'unreadable') {
@@ -236,16 +236,14 @@ async function refresh($: EngineInterface, cwd: string, settings: Settings, stat
   // Entries the user turned off with disabledMcpjsonServers aren't loaded, so they don't count.
   const disabled = await disabledProjectServers($)
   const listed = project.kind === 'found' ? project.entry : undefined
-  const entry = listed && !disabled.has(settings.server) ? listed : undefined
-  const projectUrl = listed && typeof listed.url === 'string' ? listed.url : ''
-  const url = settings.endpointOverride || projectUrl || FALLBACK_ENDPOINT
-  // Project copies of the server: its configured name (if listed and enabled)
-  // and any other enabled name at the plugin server's URL.
+  const entry = listed && !disabled.has(SERVER_NAME) ? listed : undefined
+  // Project copies of the server: its name (if listed and enabled) and any
+  // other enabled name at the plugin server's URL.
   const aliases = project.kind === 'found' ? project.aliases.filter(n => !disabled.has(n)) : []
-  state.projectNames = [...(entry ? [settings.server] : []), ...aliases]
+  state.projectNames = [...(entry ? [SERVER_NAME] : []), ...aliases]
   const [probe, sources] = await Promise.all([
-    probeEndpoint($, url),
-    sessionToolSources($, settings.server, state.projectNames),
+    probeEndpoint($, settings.endpoint),
+    sessionToolSources($, SERVER_NAME, state.projectNames),
   ])
   const tools = sources.project || sources.plugin
   const twice = sources.project && sources.plugin
@@ -258,7 +256,7 @@ async function refresh($: EngineInterface, cwd: string, settings: Settings, stat
   if (state.upAtStart === undefined) state.upAtStart = probe !== 'down'
 
   toastOnEntry($, state, 'twice', twice, twiceToast(state.projectNames))
-  toastOnEntry($, state, 'shadowed', probe === 'up' && !tools && state.shadowed, shadowToast(settings.server))
+  toastOnEntry($, state, 'shadowed', probe === 'up' && !tools && state.shadowed, shadowToast(SERVER_NAME))
 
   // Editor up but this session has no tools: only the Reconnect button can re-dial.
   toastOnEntry($, state, 'reconnect', probe === 'up' && !tools && !state.shadowed, RECONNECT_TOAST)

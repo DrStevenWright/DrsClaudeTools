@@ -4,7 +4,7 @@ Claude Code mods (plugins) by DrStevenWright, published as a plugin marketplace.
 
 | Mod | What it does |
 | --- | --- |
-| [unreal-mcp-status](plugins/unreal-mcp-status) | Status line showing whether the Unreal Editor MCP server is connected |
+| [unreal-mcp-status](plugins/unreal-mcp-status) | Connects Claude Code to the Unreal Editor's MCP server and shows whether the connection is working |
 
 ## Installing a mod
 

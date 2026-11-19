@@ -6,7 +6,7 @@
     {
       "name": "unreal-mcp-status",
       "source": "./plugins/unreal-mcp-status",
-      "description": "Status line showing whether the Unreal Editor MCP server is connected"
+      "description": "Connects Claude Code to the Unreal Editor's MCP server and shows whether the connection is working"
     }
   ]
 }

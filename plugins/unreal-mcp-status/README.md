@@ -1,37 +1,70 @@
 # unreal-mcp-status
 
-A Claude Code status line that shows whether the Unreal Editor's MCP server is reachable and connected to the current session:
+Connects Claude Code to the Unreal Editor's MCP server, and shows under the prompt whether the connection is working.
 
-| Status line | Meaning |
-| --- | --- |
-| `Unreal MCP ● connected` | The editor answers and this session has the server's tools. |
-| `Unreal MCP ◐ editor up · not connected ⓘ` | The editor answers, but this session has no connection, usually because the editor started after the session. Press **Reconnect** on **Unreal MCP** under Connectors. |
-| `Unreal MCP ◐ editor up · not connected ⓘ` (project entry) | Not connected, and the project's `.mcp.json` lists `unreal-mcp` at the plugin's URL, which hides the plugin's server so the mod can't connect it. Remove the project entry, then start a new session. |
-| `Unreal MCP ⚠ connected twice ⓘ` | The session has tools from both the project's and the plugin's server, so every tool is listed twice. Remove the project entry or disable this plugin. |
-| `Unreal MCP ◐ connected · editor busy` | The session is connected, but the editor didn't answer within 3 seconds, usually because it is cooking, compiling shaders or blocked on a dialog. |
-| `Unreal MCP ○ editor busy` | The same, in a session that isn't connected. |
-| `Unreal MCP ○ offline` | Nothing answers at the endpoint: the editor isn't running, or was closed. A session that was connected reconnects by itself when the editor comes back. |
-| `Unreal MCP ○ invalid .mcp.json ⓘ` | The project's `.mcp.json` exists but can't be parsed. The toast gives the line and column. |
+## Prerequisites
 
-`ⓘ` means a toast explains the state, once each time the state is entered.
+Your Unreal project needs the editor's MCP server running. Tested with Unreal Engine 5.8, where these plugins are experimental.
 
-It checks every 15 seconds, and every 30 seconds once connected. The status updates on its own after a reconnect. It stays silent in any project whose `.mcp.json` does not configure the server, so it is safe to install at user scope.
+1. **Enable the plugins.** In the editor, open **Edit > Plugins** and enable:
+   - **Unreal MCP** (`ModelContextProtocol`): required. This is the MCP server itself.
+   - **All Toolsets** (`AllToolsets`): recommended. It gives Claude the editor's tools (actors, assets, Blueprints and so on); without it there is little to use.
 
-**Reconnecting:** Claude Code connects to MCP servers once, when the session starts. Where Reconnect is available for the server (`/mcp` in the terminal CLI), use it. In the desktop app a project `.mcp.json` server may not be listed with a Reconnect button; forking or starting a new session connects it.
+   Restart the editor when asked.
+2. **Start the server automatically.** Open **Edit > Editor Preferences > General > Model Context Protocol** and tick **Auto Start Server**. This is a personal setting, saved per project on your machine, so everyone using the project sets it once. Alternatively, run `ModelContextProtocol.StartServer` in the editor's console each time you open the editor.
+3. **Leave the port at 8000**, set on the same page as **Server Port Number**, unless you need another. If you change it, change the plugin's port to match (see [Changing the port](#changing-the-port)).
 
-**The plugin's own server:** the plugin also ships the Unreal server in its own `.mcp.json` (`http://127.0.0.1:8000/mcp`). As a plugin server it can be reconnected in a running session: the desktop app lists it as **Unreal MCP** under Connectors, with a **Reconnect** button. A session that started before the editor needs that button (a mod can't re-dial a server that failed at startup: `$.mcp.connect` returns the old failure). A session that loses the editor reconnects by itself when the editor comes back. Its tools are named `mcp__plugin_unreal-mcp-status_unreal-mcp__*`. In a folder with a `.uproject` the status shows even when the project's `.mcp.json` has no `unreal-mcp` entry. Remove `unreal-mcp` from the project's `.mcp.json`: while the project lists a server of the same name, Claude Code uses it and drops the plugin's copy (`claude mcp list` shows only the project entry), so there is no plugin server to reconnect. Renaming the entry doesn't help: both servers then connect, and every editor tool is listed twice. The mod spots a renamed entry by its URL and reports it as connected twice.
+Don't run the editor's `ModelContextProtocol.GenerateClientConfig ClaudeCode` command: it writes an `unreal-mcp` entry into the project's `.mcp.json`, which this plugin doesn't need (see the note under Install).
 
 ## Install
 
+Install it in **one** of these two ways.
+
+- **In a terminal session**, type this at the prompt:
+
+  ```
+  /plugin install unreal-mcp-status --marketplace DrStevenWright/claude-mods
+  ```
+
+- **In the desktop app**, click + next to the prompt box, then Plugins, then Add marketplace with `DrStevenWright/claude-mods`, then Add plugin.
+
+When asked where to install it, choose **project** to turn it on for this Unreal project only, or **user** for all your projects. It stays hidden in folders that aren't Unreal projects.
+
+**Important:** the plugin brings its own connection to the editor, called **Unreal MCP**. Don't also add an `unreal-mcp` server to your project's `.mcp.json`, under that name or any other. If one is there, remove it, or the connection won't work properly and every editor tool appears twice.
+
+## Using it
+
+Start the Unreal Editor, then start Claude Code in the project folder. The status line under the prompt should read `Unreal MCP ● connected`.
+
+If you start Claude Code first, that's fine: once the editor is up, the status line asks you to reconnect. Press **Reconnect** on **Unreal MCP** under Connectors (in the terminal, use `/mcp`).
+
+| Status line | What to do |
+| --- | --- |
+| `Unreal MCP ● connected` | Nothing: it's working. |
+| `Unreal MCP ◐ editor up · not connected ⓘ` | Press **Reconnect** on **Unreal MCP**. If the message mentions `.mcp.json`, remove the project's `unreal-mcp` entry and start a new session. |
+| `Unreal MCP ○ offline` | Start the editor. |
+| `Unreal MCP ◐ connected · editor busy` or `Unreal MCP ○ editor busy` | Wait: the editor is compiling, cooking or showing a dialog. |
+| `Unreal MCP ⚠ connected twice ⓘ` | Remove the `unreal-mcp` entry from the project's `.mcp.json`. |
+| `Unreal MCP ○ invalid .mcp.json ⓘ` | Fix the project's `.mcp.json`. The message gives the line and column. |
+
+`ⓘ` means a short message pops up to explain. The status line updates every 15 to 30 seconds, and stays empty in folders that aren't Unreal projects.
+
+## Changing the port
+
+The plugin expects the editor's MCP server at `http://127.0.0.1:8000/mcp`. If your editor uses a different port, change the **Unreal Editor MCP URL** setting (`endpoint_url`) with `/plugin configure unreal-mcp-status@claude-mods` in a terminal session, or from PowerShell:
+
 ```
-/plugin install unreal-mcp-status --marketplace DrStevenWright/claude-mods
+'{"endpoint_url":"http://127.0.0.1:8001/mcp"}' | claude plugin configure unreal-mcp-status@claude-mods --values-stdin
 ```
 
-To turn it on for one Unreal project only, choose the **project** scope: that adds it to the project's `.claude/settings.json`, which you can commit.
+Then start a new session, or press **Reconnect** on **Unreal MCP**.
 
-## Settings
+## Checking the connection
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `server_name` | `unreal-mcp` | The server's key in the project's `.mcp.json`. |
-| `endpoint_url` | empty | Overrides the URL to probe. Empty uses the `url` from `.mcp.json`, falling back to `http://127.0.0.1:8000/mcp`. |
+Run this in the project folder:
+
+```
+claude mcp list
+```
+
+Look for the `plugin:unreal-mcp-status:unreal-mcp` line: `✔ Connected` means it's working, and `✘ Failed to connect` means the editor isn't running.
