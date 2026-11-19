@@ -1,0 +1,8 @@
+{
+  "name": "prompt-drafter",
+  "version": "0.2.0",
+  "description": "Side pane for drafting and formatting prompts before sending them to the prompt box.",
+  "author": { "name": "DrStevenWright" },
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}

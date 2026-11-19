@@ -5,6 +5,7 @@ Claude Code mods (plugins) by DrStevenWright, published as a plugin marketplace.
 | Mod | What it does |
 | --- | --- |
 | [unreal-mcp-status](plugins/unreal-mcp-status) | Connects Claude Code to the Unreal Editor's MCP server and shows whether the connection is working |
+| [prompt-drafter](plugins/prompt-drafter) | Side pane for drafting and formatting prompts before sending them to the prompt box (experimental) |
 
 ## Installing a mod
 

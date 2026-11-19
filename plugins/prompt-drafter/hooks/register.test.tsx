@@ -1,0 +1,182 @@
+import { expect, mock, test } from 'claude-code/testing'
+
+const PANE = {
+  plugin: 'prompt-drafter',
+  component: 'Pane',
+  requestId: 'prompt-drafter',
+  props: {
+    title: 'Prompt draft',
+    isFocused: true,
+    bodyColumns: 60,
+    placement: 'dock',
+    scroll: { offset: 0, bodyRows: 40 },
+    view: {},
+  },
+} as const
+
+type Mounted = Awaited<ReturnType<Parameters<Parameters<typeof test>[1]>[0]['ui']['mount']>>
+
+// The field's key changes whenever the mod sets the text, so look it up.
+async function editor(ui: Mounted) {
+  const found = await ui.find({ type: 'Input' })
+  if (!found?.key) throw new Error('no editor field drawn')
+  return found
+}
+async function type(ui: Mounted, text: string) {
+  const { key } = await editor(ui)
+  await ui.input({ key, text, kind: 'change' })
+}
+async function preview(ui: Mounted) {
+  return (await ui.find({ type: 'Markdown' }))?.text
+}
+const tab = (ui: Mounted, mode: 'write' | 'preview' | 'split') => ui.press({ key: `tab-${mode}` })
+
+test('Write is the default: the editor fills the pane and nothing else scrolls', async ($, on) => {
+  mock.store(on)
+  const clock = mock.clock(on)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+
+  expect((await editor(ui)).props.rows).toBe(30)
+  await type(ui, 'Some text')
+  await clock.advance(500)
+  expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
+  expect(await ui.find({ type: 'Text', text: /Nothing to preview/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('Preview shows what was just typed, and Write gets it back', async ($, on) => {
+  mock.store(on)
+  mock.clock(on)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+
+  await type(ui, '## Plan\n- step one')
+  await tab(ui, 'preview')
+  expect(await preview(ui)).toBe('## Plan\n- step one')
+  expect(await ui.find({ type: 'Input' })).toBeUndefined()
+
+  await tab(ui, 'write')
+  expect((await editor(ui)).props.value).toBe('## Plan\n- step one')
+  await ui.unmount()
+})
+
+test('the tab chosen is remembered for later sessions', async ($, on) => {
+  mock.store(on, { mode: 'preview' })
+  on('command.register', () => ({ value: { command: 'draft' } }))
+  on('session.start', (_, e) => ({ cwd: e.cwd }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await ui.find({ type: 'Input' })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('Split: typing leaves the field alone; the preview catches up after a pause', async ($, on) => {
+  mock.store(on)
+  const clock = mock.clock(on)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await tab(ui, 'split')
+
+  const before = await editor(ui)
+  await type(ui, 'Fix the')
+  await type(ui, 'Fix the splash')
+  const during = await editor(ui)
+
+  // The field is drawn exactly as before: same key, same value.
+  expect(during.key).toBe(before.key)
+  expect(during.props.value).toBe(before.props.value)
+  expect(await preview(ui)).toBeUndefined()
+
+  await clock.advance(500)
+  expect(await preview(ui)).toBe('Fix the splash')
+  expect((await editor(ui)).key).toBe(before.key)
+  await ui.unmount()
+})
+
+test('a toolbar button appends, send fills the prompt box', async ($, on) => {
+  const fills: string[] = []
+  mock.store(on)
+  mock.clock(on)
+  on('prompt.fill', (_, e) => {
+    fills.push(e.text)
+    return { isFilled: true }
+  })
+  on('ui.toast', () => ({ value: {} }))
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    fills.length = 0
+    const ui = await $.ui.mount({ ...PANE, surface })
+    await tab(ui, 'split')
+
+    expect((await ui.find({ type: 'Text', text: /Nothing to preview/ }))?.text).toBe(
+      'Nothing to preview yet.',
+    )
+
+    // No pause: the button must still see the newest typed text.
+    await type(ui, 'Fix the splash')
+    await ui.press({ key: 'bullet' })
+    expect(await preview(ui)).toBe('Fix the splash\n- ')
+    expect((await editor(ui)).props.value).toBe('Fix the splash\n- ')
+
+    await ui.press({ key: 'send' })
+    expect(fills).toEqual(['Fix the splash\n- '])
+    expect((await ui.find({ type: 'Text', text: /Nothing to preview/ }))?.text).toBe(
+      'Nothing to preview yet.',
+    )
+    expect((await editor(ui)).props.value).toBe('')
+    await ui.unmount()
+  }
+})
+
+test('Clear empties a field that was only typed into', async ($, on) => {
+  mock.store(on)
+  mock.clock(on)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+
+  const before = await editor(ui)
+  await type(ui, 'typed but never set by the mod')
+  await ui.press({ key: 'clear' })
+  const after = await editor(ui)
+
+  expect(after.key).not.toBe(before.key)
+  expect(after.props.value).toBe('')
+  await ui.unmount()
+})
+
+test('the Quote button starts a quoted line', async ($, on) => {
+  mock.store(on)
+  mock.clock(on)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await tab(ui, 'split')
+
+  await type(ui, 'The log said:')
+  await ui.press({ key: 'quote' })
+  expect(await preview(ui)).toBe('The log said:\n> ')
+
+  // Another button after a quote line ends the quote with a blank line first.
+  await type(ui, 'The log said:\n> Error 42')
+  await ui.press({ key: 'bullet' })
+  expect(await preview(ui)).toBe('The log said:\n> Error 42\n\n- ')
+
+  // A second Quote press keeps the quote going.
+  await type(ui, '> a')
+  await ui.press({ key: 'quote' })
+  expect(await preview(ui)).toBe('> a\n> ')
+  await ui.unmount()
+})
+
+test('the List button continues the numbering of the list above it', async ($, on) => {
+  mock.store(on)
+  mock.clock(on)
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await tab(ui, 'split')
+
+  await type(ui, 'Steps:')
+  await ui.press({ key: 'numbered' })
+  await type(ui, 'Steps:\n1. First')
+  await ui.press({ key: 'numbered' })
+  await type(ui, 'Steps:\n1. First\n2. Second\n  7. Nested')
+  await ui.press({ key: 'numbered' })
+
+  expect(await preview(ui)).toBe('Steps:\n1. First\n2. Second\n  7. Nested\n  8. ')
+  await ui.unmount()
+})
