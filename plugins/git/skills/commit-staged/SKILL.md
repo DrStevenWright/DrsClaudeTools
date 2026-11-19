@@ -19,6 +19,6 @@ Arguments: `$ARGUMENTS`
 2. If nothing is staged, stop: "Nothing is staged in <repo>."
 3. Make sure there is a work branch (procedure step 5). Switching carries the index over unchanged.
 4. Commit (procedure step 6). Don't stage anything.
-5. Report (procedure step 9), listing the unstaged and untracked files that were left out.
+5. Report (procedure step 9), counting `git -C "<R>" show --raw --format= HEAD`, with the number of unstaged and untracked files left out.
 
 Don't push or open a PR.

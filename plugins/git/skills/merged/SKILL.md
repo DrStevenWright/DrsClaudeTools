@@ -26,4 +26,4 @@ Arguments: `$ARGUMENTS`. A token that isn't a repo is the branch name `B`; if no
    2. If they differ, ask with AskUserQuestion: "Update <P>'s pointer in <host name> now?". Options: "Start the pointer branch" (recommended) and "Not now".
    3. On yes, work in `H` and load `H`'s rules (procedure step 3 with `R` = `H`). Make a work branch (procedure step 5; the type is normally `chore`). Then stage only the pointer with `git -C "<H>" add <P>` and commit it (procedure step 6). Other changes in `H` stay as they are. Don't push: say that `/git:publish-committed <host>` publishes it.
    4. This only finds the host this checkout sits in. Other clones of the host aren't touched.
-8. Report: the branch deleted, the commit `D` is now at, and what happened with the pointer.
+8. Report in one line, with no other commentary: `<repo> · deleted <B> · <D> at <short sha>`, plus `· pointer branch <name> in <host>` or `· pointer already current` where step 7 applied.

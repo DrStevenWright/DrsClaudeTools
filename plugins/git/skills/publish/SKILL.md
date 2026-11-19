@@ -20,4 +20,4 @@ Arguments: `$ARGUMENTS`
 3. If there are changes: stage everything with `git -C "<R>" add -A` (unless the repo's rules say otherwise), then commit (procedure step 6). If there are none, go on with the commits already there.
 4. If the branch has no commits ahead of `origin/<D>`, stop: "Nothing to publish on <branch>."
 5. Push and open or update the PR (procedure step 8).
-6. Report (procedure step 9), including the PR link.
+6. Report (procedure step 9), counting the whole branch (`git -C "<R>" diff --raw origin/<D>...HEAD`), with the PR link.

@@ -24,4 +24,4 @@ Arguments: `$ARGUMENTS`
 4. If there are no merged branches and none with the remote gone, say so and stop.
 5. Ask with AskUserQuestion, `multiSelect: true`. List each merged branch as an option labelled "<branch> (PR #n)". List each remote-gone branch as "<branch> (remote gone, no merged PR)", with a description warning that its work may not be on `D`. AskUserQuestion allows at most 4 options per question; with more branches, ask in several questions of up to 4 each, in one call (up to 4 questions). If there are still more, run a further round.
 6. Delete the ticked branches with `git -C "<R>" branch -D <branch>`, then `git -C "<R>" remote prune origin`.
-7. Report the branches deleted and kept. List the unmerged branches by name, untouched.
+7. Report in one line, with no other commentary: `<repo> · deleted <n>: <names> · kept <m> unmerged`.

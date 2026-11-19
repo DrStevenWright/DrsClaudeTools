@@ -19,6 +19,6 @@ Arguments: `$ARGUMENTS`
 2. Make sure there is a work branch (procedure step 5).
 3. Stage everything with `git -C "<R>" add -A`, unless the repo's rules give a different staging rule.
 4. Commit (procedure step 6).
-5. Report (procedure step 9).
+5. Report (procedure step 9), counting `git -C "<R>" show --raw --format= HEAD`.
 
 Don't push or open a PR.

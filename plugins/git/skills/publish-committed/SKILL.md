@@ -20,4 +20,4 @@ Arguments: `$ARGUMENTS`
 3. If the branch's PR has already merged (procedure step 7), stop and suggest `/git:merged`.
 4. If the branch has no commits ahead of `origin/<D>`, stop: "Nothing to publish on <branch>."
 5. Push and open or update the PR (procedure step 8). Don't stage or commit.
-6. Report (procedure step 9), including the PR link and listing any uncommitted changes that were left out.
+6. Report (procedure step 9), counting the whole branch (`git -C "<R>" diff --raw origin/<D>...HEAD`), with the PR link and the number of uncommitted files left out.
