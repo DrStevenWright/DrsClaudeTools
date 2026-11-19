@@ -12,6 +12,11 @@
       "name": "prompt-drafter",
       "source": "./plugins/prompt-drafter",
       "description": "Side pane for drafting and formatting prompts before sending them to the prompt box."
+    },
+    {
+      "name": "git",
+      "source": "./plugins/git",
+      "description": "Slash commands that stage, commit, publish and tidy up git branches, following each repo's own workflow rules"
     }
   ]
 }

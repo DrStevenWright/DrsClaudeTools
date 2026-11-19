@@ -1,0 +1,57 @@
+# git
+
+Slash commands that stage, commit, publish and tidy up git branches. They follow each repo's own workflow rules, on top of a set of generic defaults.
+
+| Command | What it does |
+| --- | --- |
+| `/git:stage [repo]` | Stages every change, including untracked files and submodule pointers. |
+| `/git:commit [repo] [-- hint]` | Stages everything and commits, creating a work branch first if needed. |
+| `/git:commit-staged [repo] [-- hint]` | Commits only what is already staged. |
+| `/git:publish [repo] [-- hint]` | Stages, commits, pushes and opens or updates the PR. |
+| `/git:publish-committed [repo] [-- hint]` | Pushes existing commits and opens or updates the PR, without committing. |
+| `/git:merged [repo] [branch]` | After a PR merges: switches to the default branch, pulls and deletes the branch. In a submodule, it then offers to update the pointer in the host repo. |
+| `/git:prune [repo]` | Deletes the local branches you confirm whose PRs have merged, squash merges included. |
+
+Claude never runs these on its own. They run only when you type them.
+
+## Which repo
+
+With no `repo` argument, a command looks at the session's repo and its submodules and acts on the one with relevant changes. If several qualify, it asks which one. `repo` can be a path or a submodule name, such as `/git:commit DrsFramework`. Text after `--` guides the commit or PR wording.
+
+## Branches
+
+The commands never commit to the default branch. On the default branch or a detached HEAD, `commit` and `publish` create `<type>/<kebab-description>` from the remote default branch, with `--no-track`. The first push then makes the branch track its own remote branch. An existing unmerged branch is reused, and if the changes look unrelated to it, the command asks first.
+
+## Rules
+
+The plugin's defaults are in [`shared/defaults.md`](shared/defaults.md): Conventional Commits, branch names, PR title and description, and safety rules (no force-push, `--ff-only` pulls).
+
+A repo adds its own rules by linking a git workflow document from its `CLAUDE.md`, for example ``Follow [`Docs/GitWorkflow.md`](Docs/GitWorkflow.md)``. That document overrides the defaults where they differ. It doesn't need to mention this plugin and should stand on its own. It can also say, in plain prose:
+
+- how to choose a repo when several have changes;
+- checks to run before committing or publishing;
+- extra PR description sections;
+- a different base branch or staging rule.
+
+## Requirements
+
+- `git`.
+- `gh`, signed in (`gh auth login`), for `publish`, `publish-committed`, `merged` and `prune`, and for squash-merge detection.
+
+## Installing
+
+Install for every repo (user scope):
+
+```
+claude plugin install git@claude-mods --scope user
+```
+
+Or for one project only, shared with its collaborators through `.claude/settings.json`:
+
+```
+claude plugin install git@claude-mods --scope project
+```
+
+See the [marketplace README](../../README.md) for adding the marketplace.
+
+The commands are allowed to run `git` and `gh` without asking while they run. To block force-pushes in all cases, add `Bash(git push --force*)` and `Bash(git push -f*)` to `permissions.deny` in your settings.
