@@ -21,7 +21,7 @@ Running a command is the user's explicit request to stage, commit, push or delet
    - Its submodules: `git -C "<root>" submodule status --recursive`. The second field of each line is the path relative to `<root>`. Skip lines starting with `-` (not checked out).
 3. Keep the candidates this command can act on (each command says what counts). To check for changes, use `git -C "<repo>" status --porcelain --ignore-submodules=dirty`. That way a host doesn't count as changed just because a submodule has edits inside it. A host whose only changes are submodule pointers is **pointer only**.
 4. None → stop and list the repos checked, with why each didn't qualify.
-5. One → use it, and say which.
+5. One → use it.
 6. Several → if the rules loaded for the session repo (step 3) say how to choose, follow them. Otherwise ask with AskUserQuestion: one option per candidate, labelled `<name> · <branch or "detached"> · <n> changed` (add `· pointer only` where it applies). Pick exactly one repo; never act on several in one run.
 
 ## 3. Load the rules
@@ -29,7 +29,7 @@ Running a command is the user's explicit request to stage, commit, push or delet
 1. Read `${CLAUDE_PLUGIN_ROOT}/shared/defaults.md`.
 2. Read `<R>/CLAUDE.md`, if it exists. If it links a git workflow document (link text or file name mentions git workflow, e.g. `Docs/GitWorkflow.md`), read that file, resolving the link relative to `CLAUDE.md`.
 3. The repo's rules override the defaults where they differ and add to them otherwise. Your global CLAUDE.md preferences apply on top, and the user's hint applies on top of everything.
-4. If no workflow document was found, say "No workflow rules found in <R>; using the plugin defaults." once in the report.
+4. If no workflow document was found, add `· no workflow rules, using defaults` to the report line.
 5. Note any project-level rules that change these steps: how to choose a target, checks to run before committing or publishing, extra PR sections, a different base branch, a different staging rule.
 
 ## 4. Find the default branch and remote
@@ -54,7 +54,7 @@ Only `commit`, `commit-staged` and `publish` create branches. Check the current 
 2. If HEAD is detached and has commits that aren't on `origin/<D>` (`git -C "<R>" merge-base --is-ancestor HEAD origin/<D>` fails, and `git -C "<R>" log --oneline origin/<D>..HEAD` isn't empty), stop. Report those commits, since they'd be left behind.
 3. `git -C "<R>" switch --no-track -c <name> origin/<D>`. `--no-track` stops the branch tracking `origin/<D>`; its upstream is set on its first push.
 4. If the switch fails because local changes conflict with `origin/<D>`, stop and report git's message. Never stash or discard to get round it.
-5. If HEAD was behind `origin/<D>`, say that the changes now sit on the latest `origin/<D>`.
+5. The report line then marks the branch as new: `<branch> (new)`.
 
 ## 6. Commit
 
@@ -94,4 +94,15 @@ git -C "<R>" rev-parse B
 
 ## 9. Report
 
-End with one short summary: repo, branch, what was staged or committed (the subject), and the PR link where there is one. Mention anything that was left out, such as unstaged files.
+Keep the whole run terse: no commentary between tool calls, and no description of the files or what the changes do. End with a single line:
+
+```
+<repo> · <branch>[ (new)] · <action> <n> files (<x> added, <y> modified, <z> deleted, <s> submodules)[ · PR #<n> <url>]
+```
+
+- Never show the commit message or PR description: they are in git and on the PR.
+- `<action>` is `staged`, `committed` or `published`. Leave out counts that are zero (a rename counts as modified).
+- Count the files with `--raw`, which shows modes: an entry whose old or new mode is `160000` is a submodule pointer, counted under submodules only. Which diff each command counts is in the command.
+- **Submodule pointers:** for each pointer counted, check that its new commit is on the submodule's default branch (`git -C "<sub>" merge-base --is-ancestor <sha> origin/<subD>`, after fetching). If it isn't, add a second line: `<path> → <branch> @ <short sha> (not on <subD>)`, naming the branch that contains it (`git -C "<sub>" branch -a --contains <sha>`), or `unknown branch` if none does.
+- Add a short trailing note only for something the user must know: changes left out (`· 3 unstaged left out`) or the missing-rules note from step 3.
+- A stop is one line too: what stopped it and the next step.
