@@ -34,20 +34,24 @@ When asked where to install it, choose **project** to turn it on for this Unreal
 
 ## Using it
 
-Start the Unreal Editor, then start Claude Code in the project folder. The status line under the prompt should read `Unreal MCP ● connected`.
+Start the Unreal Editor, then start Claude Code in the project folder. The status line under the prompt should read `unreal-mcp-status ● connected`.
 
-If you start Claude Code first, that's fine: once the editor is up, the status line asks you to reconnect. Press **Reconnect** on **Unreal MCP** under Connectors (in the terminal, use `/mcp`).
+If you start Claude Code first, that's fine: once the editor is up, Claude Code usually connects by itself. If it hasn't connected within a minute or so, the status line asks you to reconnect: press **Reconnect** on **Unreal MCP** under Connectors (in the terminal, use `/mcp`).
 
-| Status line | What to do |
+| Status line (after `unreal-mcp-status`) | What to do |
 | --- | --- |
-| `Unreal MCP ● connected` | Nothing: it's working. |
-| `Unreal MCP ◐ editor up · not connected ⓘ` | Press **Reconnect** on **Unreal MCP**. If the message mentions `.mcp.json`, remove the project's `unreal-mcp` entry and start a new session. |
-| `Unreal MCP ○ offline` | Start the editor. |
-| `Unreal MCP ◐ connected · editor busy` or `Unreal MCP ○ editor busy` | Wait: the editor is compiling, cooking or showing a dialog. |
-| `Unreal MCP ⚠ connected twice ⓘ` | Remove the `unreal-mcp` entry from the project's `.mcp.json`. |
-| `Unreal MCP ○ invalid .mcp.json ⓘ` | Fix the project's `.mcp.json`. The message gives the line and column. |
+| `● connected` | Nothing: it's working. |
+| `◐ editor up · connecting…` | Wait: Claude Code is connecting. |
+| `◐ editor up · not connected ⓘ` | Press **Reconnect** on **Unreal MCP**. If the message mentions `.mcp.json`, remove the project's `unreal-mcp` entry and start a new session. |
+| `○ offline` | Start the editor. |
+| `○ URL not set ⓘ` | Set the **Unreal Editor MCP URL** (see [Changing the port](#changing-the-port)), then start a new session. |
+| `◐ connected · editor busy` or `○ editor busy` | Wait: the editor is compiling, cooking or showing a dialog. |
+| `⚠ connected twice ⓘ` | Remove the `unreal-mcp` entry from the project's `.mcp.json`. |
+| `○ invalid .mcp.json ⓘ` | Fix the project's `.mcp.json`. The message gives the line and column. |
 
 `ⓘ` means a short message pops up to explain. The status line updates every 15 to 30 seconds, and stays empty in folders that aren't Unreal projects.
+
+If **Unreal MCP** isn't listed under Connectors, start a new chat in the project folder: a chat started before the plugin was installed or updated doesn't have it.
 
 ## Changing the port
 

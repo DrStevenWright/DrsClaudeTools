@@ -9,13 +9,21 @@ const POLL_MS = 15_000
 // Once connected, only every second tick checks again (30 s).
 const CONNECTED_EVERY_N_TICKS = 2
 
-type Settings = { endpoint: string }
+// Checks in a row with the editor up and no tools before the Reconnect toast
+// shows, so Claude Code's own reconnect can finish first. A session that was
+// connected before reconnects by itself, so it waits longer.
+const RECONNECT_AFTER_CHECKS = 2
+const RECONNECT_AFTER_CHECKS_IF_WAS_CONNECTED = 4
+
+// urlUnset: endpoint_url is saved as an empty string (possible from 0.5.0,
+// where empty meant "use the default"). The plugin's .mcp.json substitutes it
+// as the server's url, and the substitution has no fallback (tested), so the
+// server can't connect until the setting is fixed.
+type Settings = { endpoint: string; urlUnset: boolean }
 
 function readSettings(options: PluginOptions): Settings {
-  const endpoint = typeof options.endpoint_url === 'string' && options.endpoint_url.trim()
-    ? options.endpoint_url.trim()
-    : DEFAULT_ENDPOINT
-  return { endpoint }
+  const saved = typeof options.endpoint_url === 'string' ? options.endpoint_url.trim() : undefined
+  return { endpoint: saved || DEFAULT_ENDPOINT, urlUnset: saved === '' }
 }
 
 type ProjectEntry =
@@ -140,11 +148,13 @@ const shadowToast = (name: string) =>
 const twiceToast = (names: string[]) =>
   `connected twice, so every tool is listed twice. Remove ${names.join(' and ')} from .mcp.json or disable this plugin.`
 
-// A session dials its MCP servers once, at start. A plugin server that failed
-// then stays failed: $.mcp.connect returns the startup failure without
-// re-dialling (tested). The desktop app's Reconnect button does re-dial it, and
-// the server is listed there as "Unreal MCP".
-const RECONNECT_TOAST = 'the editor is up. To connect, press Reconnect on Unreal MCP under Connectors.'
+// Claude Code often reconnects the server by itself once the editor answers;
+// the mod can't re-dial it ($.mcp.connect returns the startup failure, tested).
+// So the toast only shows once the editor has been up without a connection for
+// a while, and points to the desktop app's Reconnect button ("Unreal MCP").
+const RECONNECT_TOAST = "the editor is up but this chat hasn't connected. Press Reconnect on Unreal MCP under Connectors."
+
+const URL_UNSET_TOAST = 'the Unreal Editor MCP URL setting is empty, so the plugin can\'t connect. Set it with /plugin configure unreal-mcp-status@claude-mods.'
 
 // detail is "line L, column C: message" when the parser gave a position, else
 // the bare message; the toast keeps only the position.
@@ -170,6 +180,8 @@ type SessionState = {
   last: string | undefined
   upAtStart: boolean | undefined   // endpoint state on the first check of this session
   connected: boolean
+  everConnected: boolean           // connected at some point in this session
+  waitingChecks: number            // checks in a row with the editor up and no tools
   tick: number
   inFlight: boolean
   shadowed: boolean                // the project's entry hides the plugin's server
@@ -196,27 +208,28 @@ function show($: EngineInterface, state: SessionState, text: string | undefined)
   }
 }
 
-function describe(probe: Probe, tools: boolean, upAtStart: boolean | undefined, shadowed: boolean, twice: boolean): string {
-  if (twice) return 'Unreal MCP ⚠ connected twice ⓘ'
+function describe(probe: Probe, tools: boolean, upAtStart: boolean | undefined, shadowed: boolean, twice: boolean,
+  stillWaiting: boolean): string {
+  if (twice) return '⚠ connected twice ⓘ'
   if (probe === 'slow') {
     return tools
-      ? 'Unreal MCP ◐ connected · editor busy'
-      : 'Unreal MCP ○ editor busy'
+      ? '◐ connected · editor busy'
+      : '○ editor busy'
   }
   const up = probe === 'up'
-  if (up && tools) return 'Unreal MCP ● connected'
+  if (up && tools) return '● connected'
   if (up) {
-    // Shadowed by a project entry or just not connected yet: either way the
-    // toast says what to do. upAtStart is kept in case "started after the
-    // session" needs telling apart again.
+    // Shadowed by a project entry, or not connected after waiting: either way
+    // the toast says what to do. Until then Claude Code may still connect it.
+    // upAtStart is kept in case "started after the session" needs telling apart again.
     void upAtStart
-    void shadowed
-    return 'Unreal MCP ◐ editor up · not connected ⓘ'
+    if (!shadowed && stillWaiting) return '◐ editor up · connecting…'
+    return '◐ editor up · not connected ⓘ'
   }
   // Refused: nothing is listening, almost always because the editor was closed.
   // That's normal, so it reads as offline whether or not the session was
   // connected; the session reconnects by itself when the editor comes back.
-  return 'Unreal MCP ○ offline'
+  return '○ offline'
 }
 
 async function refresh($: EngineInterface, cwd: string, settings: Settings, state: SessionState): Promise<void> {
@@ -225,12 +238,17 @@ async function refresh($: EngineInterface, cwd: string, settings: Settings, stat
     project.kind === 'unreadable' ? invalidJsonToast(project.detail) : '')
   if (project.kind === 'unreadable') {
     state.connected = false
-    return show($, state, 'Unreal MCP ○ invalid .mcp.json ⓘ')
+    return show($, state, '○ invalid .mcp.json ⓘ')
   }
   // Stay silent outside Unreal projects: no project entry and no .uproject.
   if (project.kind === 'absent' && !(await isUnrealProject($, cwd))) {
     state.connected = false
     return show($, state, undefined)
+  }
+  toastOnEntry($, state, 'urlUnset', settings.urlUnset, URL_UNSET_TOAST)
+  if (settings.urlUnset) {
+    state.connected = false
+    return show($, state, '○ URL not set ⓘ')
   }
 
   // Entries the user turned off with disabledMcpjsonServers aren't loaded, so they don't count.
@@ -258,11 +276,17 @@ async function refresh($: EngineInterface, cwd: string, settings: Settings, stat
   toastOnEntry($, state, 'twice', twice, twiceToast(state.projectNames))
   toastOnEntry($, state, 'shadowed', probe === 'up' && !tools && state.shadowed, shadowToast(SERVER_NAME))
 
-  // Editor up but this session has no tools: only the Reconnect button can re-dial.
-  toastOnEntry($, state, 'reconnect', probe === 'up' && !tools && !state.shadowed, RECONNECT_TOAST)
+  // Editor up but this session has no tools. Give Claude Code's own reconnect
+  // time to finish before pointing to the Reconnect button.
+  const waiting = probe === 'up' && !tools && !state.shadowed
+  state.waitingChecks = waiting ? state.waitingChecks + 1 : 0
+  const patience = state.everConnected ? RECONNECT_AFTER_CHECKS_IF_WAS_CONNECTED : RECONNECT_AFTER_CHECKS
+  const stillWaiting = waiting && state.waitingChecks < patience
+  toastOnEntry($, state, 'reconnect', waiting && !stillWaiting, RECONNECT_TOAST)
 
   state.connected = probe === 'up' && tools
-  show($, state, describe(probe, tools, state.upAtStart, state.shadowed, twice))
+  if (state.connected) state.everConnected = true
+  show($, state, describe(probe, tools, state.upAtStart, state.shadowed, twice, stillWaiting))
 }
 
 // Skip a tick while the previous check is still pending, so a hung editor
@@ -283,7 +307,8 @@ export const register: Register = (on, options) => {
   on('session.start', async ($, e, next) => {
     const result = await next(e)
     const state: SessionState = {
-      last: undefined, upAtStart: undefined, connected: false, tick: 0, inFlight: false,
+      last: undefined, upAtStart: undefined, connected: false, everConnected: false, waitingChecks: 0,
+      tick: 0, inFlight: false,
       shadowed: false, projectNames: [], toasted: new Set<string>(),
     }
     void guardedRefresh($, e.cwd, settings, state)
