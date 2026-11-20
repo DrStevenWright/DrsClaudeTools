@@ -98,7 +98,7 @@ async function probeEndpoint($: EngineInterface, url: string): Promise<Probe> {
 
 // This plugin also ships the server in its own .mcp.json, so a session can
 // re-dial it as a plugin server. Plugin servers' tools carry a plugin prefix.
-const PLUGIN_NAME = 'unreal-mcp-status'
+const PLUGIN_NAME = 'unreal-mcp'
 
 // Which copies of the server this session has tools from: the project's
 // (.mcp.json) and/or the plugin's own.
@@ -154,7 +154,7 @@ const twiceToast = (names: string[]) =>
 // a while, and points to the desktop app's Reconnect button ("Unreal MCP").
 const RECONNECT_TOAST = "the editor is up but this chat hasn't connected. Press Reconnect on Unreal MCP under Connectors."
 
-const URL_UNSET_TOAST = 'the Unreal Editor MCP URL setting is empty, so the plugin can\'t connect. Set it with /plugin configure unreal-mcp-status@claude-mods.'
+const URL_UNSET_TOAST = 'the Unreal Editor MCP URL setting is empty, so the plugin can\'t connect. Set it with /plugin configure unreal-mcp@drs-claude-tools.'
 
 // detail is "line L, column C: message" when the parser gave a position, else
 // the bare message; the toast keeps only the position.

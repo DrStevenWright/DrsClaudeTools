@@ -1,4 +1,4 @@
-# unreal-mcp-status
+# unreal-mcp
 
 Connects Claude Code to the Unreal Editor's MCP server, and shows under the prompt whether the connection is working.
 
@@ -23,10 +23,10 @@ Install it in **one** of these two ways.
 - **In a terminal session**, type this at the prompt:
 
   ```
-  /plugin install unreal-mcp-status --marketplace DrStevenWright/claude-mods
+  /plugin install unreal-mcp --marketplace DrStevenWright/DrsClaudeTools
   ```
 
-- **In the desktop app**, click + next to the prompt box, then Plugins, then Add marketplace with `DrStevenWright/claude-mods`, then Add plugin.
+- **In the desktop app**, click + next to the prompt box, then Plugins, then Add marketplace with `DrStevenWright/DrsClaudeTools`, then Add plugin.
 
 When asked where to install it, choose **project** to turn it on for this Unreal project only, or **user** for all your projects. It stays hidden in folders that aren't Unreal projects.
 
@@ -34,11 +34,11 @@ When asked where to install it, choose **project** to turn it on for this Unreal
 
 ## Using it
 
-Start the Unreal Editor, then start Claude Code in the project folder. The status line under the prompt should read `unreal-mcp-status ● connected`.
+Start the Unreal Editor, then start Claude Code in the project folder. The status line under the prompt should read `unreal-mcp ● connected`.
 
 If you start Claude Code first, that's fine: once the editor is up, Claude Code usually connects by itself. If it hasn't connected within a minute or so, the status line asks you to reconnect: press **Reconnect** on **Unreal MCP** under Connectors (in the terminal, use `/mcp`).
 
-| Status line (after `unreal-mcp-status`) | What to do |
+| Status line (after `unreal-mcp`) | What to do |
 | --- | --- |
 | `● connected` | Nothing: it's working. |
 | `◐ editor up · connecting…` | Wait: Claude Code is connecting. |
@@ -55,10 +55,10 @@ If **Unreal MCP** isn't listed under Connectors, start a new chat in the project
 
 ## Changing the port
 
-The plugin expects the editor's MCP server at `http://127.0.0.1:8000/mcp`. If your editor uses a different port, change the **Unreal Editor MCP URL** setting (`endpoint_url`) with `/plugin configure unreal-mcp-status@claude-mods` in a terminal session, or from PowerShell:
+The plugin expects the editor's MCP server at `http://127.0.0.1:8000/mcp`. If your editor uses a different port, change the **Unreal Editor MCP URL** setting (`endpoint_url`) with `/plugin configure unreal-mcp@drs-claude-tools` in a terminal session, or from PowerShell:
 
 ```
-'{"endpoint_url":"http://127.0.0.1:8001/mcp"}' | claude plugin configure unreal-mcp-status@claude-mods --values-stdin
+'{"endpoint_url":"http://127.0.0.1:8001/mcp"}' | claude plugin configure unreal-mcp@drs-claude-tools --values-stdin
 ```
 
 Then start a new session, or press **Reconnect** on **Unreal MCP**.
@@ -71,4 +71,4 @@ Run this in the project folder:
 claude mcp list
 ```
 
-Look for the `plugin:unreal-mcp-status:unreal-mcp` line: `✔ Connected` means it's working, and `✘ Failed to connect` means the editor isn't running.
+Look for the `plugin:unreal-mcp:unreal-mcp` line: `✔ Connected` means it's working, and `✘ Failed to connect` means the editor isn't running.
