@@ -97,7 +97,7 @@ git -C "<R>" rev-parse B
 Keep the whole run terse: no commentary between tool calls, and no description of the files or what the changes do. End with a single line:
 
 ```
-<repo> · <branch>[ (new)] · <action> <n> files (<x> added, <y> modified, <z> deleted, <s> submodules)[ · PR #<n> <url>]
+<repo> · <branch>[ (new)] · <action> <n> files (<x> added, <y> modified, <z> deleted, <s> submodules)[ · <PR url>]
 ```
 
 - Never show the commit message or PR description: they are in git and on the PR.
