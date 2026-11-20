@@ -14,7 +14,7 @@ Slash commands that stage, commit, publish and tidy up git branches. They follow
 | `/git:split-resume [repo]` | Returns from a split branch to the branch it came from and restores the parked edits. |
 | `/git:prune [repo]` | Deletes the local branches you confirm whose PRs have merged, squash merges included. |
 
-Claude never runs these on its own. They run only when you type them.
+Claude never runs these on its own. They run only when you type them or press one of [the pane](#the-pane)'s buttons.
 
 ## Which repo
 
@@ -37,6 +37,18 @@ Build, test and publish the new branch as usual. Then return with either:
 - `/git:split-resume`, without merging: back to the previous branch, edits restored.
 
 Every `/git:` command refuses to work on a parked branch, and a session start says when edits are parked. If you switch back by hand, `/git:split-resume` (or `git reset HEAD~1` on the park commit) restores them. Until they are restored, `refs/drs-split/<branch>` keeps a backup of every edit as it was before the split. Submodule pointers always stay behind, and the commands don't stage them on a split branch.
+
+## The pane
+
+`/git-pane` opens the Git tools pane beside the chat. It shows the session's repo and each of its submodules:
+
+- **A line for each repo**, with the branch (or `detached`), how many files have changed, whether the only change is a submodule pointer, and how many commits are still to publish. A split branch is tagged `split from <branch>`.
+- **A warning** for a submodule pointer whose commit isn't on that submodule's default branch, naming the branch it is on. A submodule's default branch is the one `.gitmodules` tracks (`branch = …`), or else its remote's.
+- **Buttons** for Stage, Commit, Publish, Merged, Split and Resume split. Ones that don't apply are greyed out, and pressing one says why. On a branch with parked edits, only Resume split applies.
+
+Each button runs its `/git:` command for that repo, as if you'd typed it, so the command's rules and judgement apply. The pane refreshes after every turn and every 15 seconds while it's shown.
+
+In the desktop app, the right-click menu has Show Git tools pane, plus the same commands while the pane is closed. While it's open, the menu has just the extras: Commit staged, Publish committed and Prune. Commands from the menu choose their repo the way a typed command does.
 
 ## Rules
 

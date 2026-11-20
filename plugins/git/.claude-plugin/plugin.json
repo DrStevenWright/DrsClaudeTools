@@ -1,7 +1,8 @@
 {
   "name": "git",
-  "version": "0.2.1",
-  "description": "Slash commands that stage, commit, publish and tidy up git branches, following each repo's own workflow rules",
+  "version": "0.3.0",
+  "description": "Slash commands that stage, commit, publish and tidy up git branches, following each repo's own workflow rules, and a pane with buttons for them",
   "author": { "name": "DrStevenWright" },
-  "license": "MIT"
+  "license": "MIT",
+  "types": "./types/index.d.ts"
 }

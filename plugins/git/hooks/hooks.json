@@ -1,5 +1,6 @@
 {
-  "description": "Says when a repo in the session has edits parked by /git:split-commits, or is on a split branch.",
+  "description": "Says when a repo in the session has edits parked by /git:split-commits, or is on a split branch, and adds the git pane.",
+  "modules": ["./pane.tsx"],
   "hooks": {
     "SessionStart": [
       {
