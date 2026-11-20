@@ -1,6 +1,6 @@
 {
-  "name": "unreal-mcp-status",
-  "version": "0.6.1",
+  "name": "unreal-mcp",
+  "version": "0.7.0",
   "description": "Connects Claude Code to the Unreal Editor's MCP server and shows whether the connection is working",
   "author": { "name": "DrStevenWright" },
   "license": "MIT",

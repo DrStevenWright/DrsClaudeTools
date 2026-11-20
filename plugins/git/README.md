@@ -43,13 +43,13 @@ A repo adds its own rules by linking a git workflow document from its `CLAUDE.md
 Install for every repo (user scope):
 
 ```
-claude plugin install git@claude-mods --scope user
+claude plugin install git@drs-claude-tools --scope user
 ```
 
 Or for one project only, shared with its collaborators through `.claude/settings.json`:
 
 ```
-claude plugin install git@claude-mods --scope project
+claude plugin install git@drs-claude-tools --scope project
 ```
 
 See the [marketplace README](../../README.md) for adding the marketplace.

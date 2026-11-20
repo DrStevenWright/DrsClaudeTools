@@ -36,7 +36,7 @@ These come from what the mod API offers today, not from choices in the mod:
 ## Install
 
 ```
-/plugin install prompt-drafter --marketplace DrStevenWright/claude-mods
+/plugin install prompt-drafter --marketplace DrStevenWright/DrsClaudeTools
 ```
 
 Choose the **user** scope to have `/draft` in every session.
