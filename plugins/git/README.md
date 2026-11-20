@@ -10,6 +10,8 @@ Slash commands that stage, commit, publish and tidy up git branches. They follow
 | `/git:publish [repo] [-- hint]` | Stages, commits, pushes and opens or updates the PR. |
 | `/git:publish-committed [repo] [-- hint]` | Pushes existing commits and opens or updates the PR, without committing. |
 | `/git:merged [repo] [branch]` | After a PR merges: switches to the default branch, pulls and deletes the branch. In a submodule, it then offers to update the pointer in the host repo. |
+| `/git:split-commits [repo] [-- hint]` | Offers ways to split one change off the uncommitted edits onto a new branch from the default branch. Parks the rest on the current branch and switches to the new one. |
+| `/git:split-resume [repo]` | Returns from a split branch to the branch it came from and restores the parked edits. |
 | `/git:prune [repo]` | Deletes the local branches you confirm whose PRs have merged, squash merges included. |
 
 Claude never runs these on its own. They run only when you type them.
@@ -21,6 +23,20 @@ With no `repo` argument, a command looks at the session's repo and its submodule
 ## Branches
 
 The commands never commit to the default branch. On the default branch or a detached HEAD, `commit` and `publish` create `<type>/<kebab-description>` from the remote default branch, with `--no-track`. The first push then makes the branch track its own remote branch. An existing unmerged branch is reused, and if the changes look unrelated to it, the command asks first.
+
+## Splitting
+
+`/git:split-commits` offers only splits whose edits apply to the remote default branch on their own, one split per run. On a pick, it:
+
+1. parks every other edit on the current branch in a single `park:` commit (staged and unstaged together);
+2. creates the new branch from the remote default branch and switches to it, with the split edits unstaged.
+
+Build, test and publish the new branch as usual. Then return with either:
+
+- `/git:merged`, after its PR merges: back to the previous branch, edits restored, the default branch merged in;
+- `/git:split-resume`, without merging: back to the previous branch, edits restored.
+
+Every `/git:` command refuses to work on a parked branch, and a session start says when edits are parked. If you switch back by hand, `/git:split-resume` (or `git reset HEAD~1` on the park commit) restores them. Until they are restored, `refs/drs-split/<branch>` keeps a backup of every edit as it was before the split. Submodule pointers always stay behind, and the commands don't stage them on a split branch.
 
 ## Rules
 
@@ -35,7 +51,7 @@ A repo adds its own rules by linking a git workflow document from its `CLAUDE.md
 
 ## Requirements
 
-- `git`.
+- `git` and `bash` (Git Bash on Windows).
 - `gh`, signed in (`gh auth login`), for `publish`, `publish-committed`, `merged` and `prune`, and for squash-merge detection.
 
 ## Installing
