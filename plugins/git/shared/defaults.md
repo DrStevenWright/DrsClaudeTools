@@ -47,9 +47,10 @@ Pick the type from what the change means for users, not from which files it touc
 - Push and open PRs only when the command asks for it.
 - Never force-push, never push to the default branch, and never rewrite published history.
 - Pull with `--ff-only`. If that fails, stop and report; don't merge or rebase on your own.
-- Never stash, reset or discard the user's changes to make a command work.
+- Never stash, reset or discard the user's changes to make a command work. The split commands park and restore edits only through `scripts/split.sh`, which keeps a backup until they are restored.
 - Delete only local branches. The remote deletes merged head branches itself.
 
 ## Staging
 
 - Staging everything means `git add -A`: modified, deleted and untracked files, and changed submodule pointers.
+- **On a split branch** (`git -C "<R>" config --get branch.<branch>.splitFrom` prints a branch), never stage submodule pointers: after `git add -A`, unstage each with `git -C "<R>" reset -q -- <path>`. A submodule's checkout belongs to the branch the split came from.

@@ -23,6 +23,7 @@ Running a command is the user's explicit request to stage, commit, push or delet
 4. None → stop and list the repos checked, with why each didn't qualify.
 5. One → use it.
 6. Several → if the rules loaded for the session repo (step 3) say how to choose, follow them. Otherwise ask with AskUserQuestion: one option per candidate, labelled `<name> · <branch or "detached"> · <n> changed` (add `· pointer only` where it applies). Pick exactly one repo; never act on several in one run.
+7. **Parked edits.** Let `C` be `R`'s current branch. If `git -C "<R>" config --get branch.<C>.splitPark` prints a commit, `C` has edits parked by `/git:split-commits`. Unless this command is `split-resume`, stop: "<C> has parked edits from a split. `/git:split-resume` restores them." Never commit on top of a park commit, push it or fold it into another commit.
 
 ## 3. Load the rules
 
@@ -105,4 +106,5 @@ Keep the whole run terse: no commentary between tool calls, and no description o
 - Count the files with `--raw`, which shows modes: an entry whose old or new mode is `160000` is a submodule pointer, counted under submodules only. Which diff each command counts is in the command.
 - **Submodule pointers:** for each pointer counted, check that its new commit is on the submodule's default branch (`git -C "<sub>" merge-base --is-ancestor <sha> origin/<subD>`, after fetching). If it isn't, add a second line: `<path> → <branch> @ <short sha> (not on <subD>)`, naming the branch that contains it (`git -C "<sub>" branch -a --contains <sha>`), or `unknown branch` if none does.
 - Add a short trailing note only for something the user must know: changes left out (`· 3 unstaged left out`) or the missing-rules note from step 3.
+- On a split branch, add `· split from <branch>`.
 - A stop is one line too: what stopped it and the next step.

@@ -16,7 +16,7 @@ allowed-tools:
 Arguments: `$ARGUMENTS`
 
 1. Read `${CLAUDE_PLUGIN_ROOT}/shared/procedure.md` and follow its steps 1 to 4. A candidate repo is any repo with local branches other than its default branch. If several qualify, ask as usual.
-2. List the local branches: `git -C "<R>" for-each-ref --format="%(refname:short) %(upstream:track)" refs/heads`. Leave out `D` and the current branch.
+2. List the local branches: `git -C "<R>" for-each-ref --format="%(refname:short) %(upstream:track)" refs/heads`. Leave out `D`, the current branch, and any split branch whose previous branch still has parked edits for it (`branch.<B>.splitFrom` is `F`, and `branch.<F>.splitPark` is set with `branch.<F>.splitTo` equal to `B`): `/git:merged` handles those.
 3. Sort each branch into one of three groups:
    - **Merged:** passes the check in procedure step 7.
    - **Remote gone, no merged PR:** the upstream shows `[gone]`, but the branch fails the check.

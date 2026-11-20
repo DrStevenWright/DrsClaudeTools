@@ -1,6 +1,6 @@
 {
   "name": "git",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Slash commands that stage, commit, publish and tidy up git branches, following each repo's own workflow rules",
   "author": { "name": "DrStevenWright" },
   "license": "MIT"
