@@ -7,8 +7,8 @@ Slash commands that stage, commit, publish and tidy up git branches. They follow
 | `/git:stage [repo]` | Stages every change, including untracked files and submodule pointers. |
 | `/git:commit [repo] [-- hint]` | Stages everything and commits, creating a work branch first if needed. |
 | `/git:commit-staged [repo] [-- hint]` | Commits only what is already staged. |
-| `/git:publish [repo] [-- hint]` | Stages, commits, pushes and opens or updates the PR. |
-| `/git:publish-committed [repo] [-- hint]` | Pushes existing commits and opens or updates the PR, without committing. |
+| `/git:publish [repo] [-- hint]` | Stages, commits, pushes and opens or updates the PR. A new PR opens in the browser. |
+| `/git:publish-committed [repo] [-- hint]` | Pushes existing commits and opens or updates the PR, without committing. A new PR opens in the browser. |
 | `/git:merged [repo] [branch]` | After a PR merges: switches to the default branch, pulls and deletes the branch. In a submodule, it then offers to update the pointer in the host repo. |
 | `/git:split-commits [repo] [-- hint]` | Offers ways to split one change off the uncommitted edits onto a new branch from the default branch. Parks the rest on the current branch and switches to the new one. |
 | `/git:split-resume [repo]` | Returns from a split branch to the branch it came from and restores the parked edits. |
@@ -48,7 +48,7 @@ Every `/git:` command refuses to work on a parked branch, and a session start sa
 
 Each button runs its `/git:` command for that repo, as if you'd typed it, so the command's rules and judgement apply. The pane refreshes after every turn and every 15 seconds while it's shown.
 
-In the desktop app, the right-click menu has Show Git tools pane, plus the same commands while the pane is closed. While it's open, the menu has just the extras: Commit staged, Publish committed and Prune. Commands from the menu choose their repo the way a typed command does.
+In the desktop app, the right-click menu has Open Git tools, plus every command with a one-line description while the pane is closed. While it's open, the menu has just the commands the pane has no button for: Commit staged, Publish committed and Prune merged branches. Commands from the menu choose their repo the way a typed command does. The pane's footer shows the installed version.
 
 ## Rules
 
