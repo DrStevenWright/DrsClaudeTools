@@ -124,6 +124,7 @@ function toolSegment(name: string): string {
 
 // projectNames: the configured name plus any other .mcp.json names at the
 // plugin server's URL, so a renamed entry still counts as the project's copy.
+// "project" means any copy that isn't the plugin's, wherever it's configured.
 async function sessionToolSources($: EngineInterface, server: string, projectNames: string[] = [server]): Promise<ToolSources> {
   try {
     const names = (await $.tool.list()).map(t => t.name)
@@ -146,7 +147,7 @@ const shadowToast = (name: string) =>
   `.mcp.json lists ${name}, which blocks reconnection. Remove it and start a new session.`
 
 const twiceToast = (names: string[]) =>
-  `connected twice, so every tool is listed twice. Remove ${names.join(' and ')} from .mcp.json or disable this plugin.`
+  `connected twice, so every tool is listed twice. Remove ${names.join(' and ')} from .mcp.json or with claude mcp remove, then start a new session.`
 
 // Claude Code often reconnects the server by itself once the editor answers;
 // the mod can't re-dial it ($.mcp.connect returns the startup failure, tested).
@@ -297,9 +298,13 @@ async function refresh($: EngineInterface, cwd: string, settings: Settings, stat
   // other enabled name at the plugin server's URL.
   const aliases = project.kind === 'found' ? project.aliases.filter(n => !disabled.has(n)) : []
   state.projectNames = [...(entry ? [SERVER_NAME] : []), ...aliases]
+  // A server under the plugin server's name can also come from `claude mcp add`
+  // (local or user scope), which .mcp.json doesn't show, so its tools always count
+  // as another copy.
+  const otherNames = state.projectNames.includes(SERVER_NAME) ? state.projectNames : [SERVER_NAME, ...state.projectNames]
   const [probe, sources] = await Promise.all([
     probeEndpoint($, settings.endpoint),
-    sessionToolSources($, SERVER_NAME, state.projectNames),
+    sessionToolSources($, SERVER_NAME, otherNames),
   ])
   const tools = sources.project || sources.plugin
   const twice = sources.project && sources.plugin
@@ -311,7 +316,7 @@ async function refresh($: EngineInterface, cwd: string, settings: Settings, stat
   // A slow answer says the editor process exists, so it counts as up for the start check.
   if (state.upAtStart === undefined) state.upAtStart = probe !== 'down'
 
-  toastOnEntry($, state, 'twice', twice, twiceToast(state.projectNames))
+  toastOnEntry($, state, 'twice', twice, twiceToast(state.projectNames.length > 0 ? state.projectNames : [SERVER_NAME]))
   toastOnEntry($, state, 'shadowed', probe === 'up' && !tools && state.shadowed, shadowToast(SERVER_NAME))
 
   // Editor up but this session has no tools. Give Claude Code's own reconnect
