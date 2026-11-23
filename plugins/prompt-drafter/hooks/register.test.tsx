@@ -14,13 +14,20 @@ const PANE = {
   },
 } as const
 
-type Mounted = Awaited<ReturnType<Parameters<Parameters<typeof test>[1]>[0]['ui']['mount']>>
+// The parts of a mounted drawing the helpers use, on any surface.
+type Mounted = {
+  find(query: { type: string; text?: RegExp }): Promise<
+    { key: string | undefined; text: string; props: Record<string, unknown> } | undefined
+  >
+  input(args: { key: string; text: string; kind?: 'change' | 'submit' }): Promise<unknown>
+  press(args: { key: string }): Promise<unknown>
+}
 
 // The field's key changes whenever the mod sets the text, so look it up.
 async function editor(ui: Mounted) {
   const found = await ui.find({ type: 'Input' })
   if (!found?.key) throw new Error('no editor field drawn')
-  return found
+  return { ...found, key: found.key }
 }
 async function type(ui: Mounted, text: string) {
   const { key } = await editor(ui)
@@ -100,7 +107,7 @@ test('a toolbar button appends, send fills the prompt box', async ($, on) => {
     fills.push(e.text)
     return { isFilled: true }
   })
-  on('ui.toast', () => ({ value: {} }))
+  on('ui.toast', () => ({ value: undefined }))
 
   for (const surface of ['terminal', 'desktop'] as const) {
     fills.length = 0
@@ -179,4 +186,37 @@ test('the List button continues the numbering of the list above it', async ($, o
 
   expect(await preview(ui)).toBe('Steps:\n1. First\n2. Second\n  7. Nested\n  8. ')
   await ui.unmount()
+})
+
+const MENU = {
+  plugin: 'prompt-drafter',
+  component: 'ContextMenu',
+  requestId: 'menu-1',
+  props: {},
+  surface: 'desktop',
+} as const
+
+test('the right-click menu offers to open the pane while it is closed', async ($, on) => {
+  const opened: string[] = []
+  type Pane = { id: string; title: string; isShown: boolean; isFocused: boolean; isPlaced: boolean }
+  let panes: Pane[] = []
+  on('ui.panes', () => ({ value: panes }))
+  on('ui.open', (_, e) => {
+    opened.push(e.id)
+    panes = [{ id: e.id, title: 'Prompt draft', isShown: true, isFocused: true, isPlaced: true }]
+    return { value: { isPlaced: true } }
+  })
+
+  const menu = await $.ui.mount(MENU)
+  expect((await menu.find({ type: 'Button', text: /Open prompt drafter/ }))?.key).toBe(
+    'prompt-drafter:open',
+  )
+  await menu.press({ key: 'prompt-drafter:open' })
+  expect(opened).toEqual(['prompt-drafter'])
+  await menu.unmount()
+
+  // Once the pane is open, the menu leaves the entry out.
+  const again = await $.ui.mount({ ...MENU, requestId: 'menu-2' })
+  expect(await again.find({ type: 'Button', text: /Open prompt drafter/ })).toBeUndefined()
+  await again.unmount()
 })

@@ -6,6 +6,7 @@ declare module 'claude-code' {
       draft: string
       field: { text: string; gen: number }
       mode: DraftMode
+      paneChanges: number
     }
   }
 }

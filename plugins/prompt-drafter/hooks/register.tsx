@@ -64,9 +64,9 @@ function appendSnippet(text: string, snippet: string): string {
 function nextNumberedItem(text: string): string {
   const lines = text.split('\n')
   let i = lines.length - 1
-  while (i >= 0 && lines[i].trim() === '') i--
-  const match = i >= 0 ? /^(\s*)(\d+)[.)]\s/.exec(lines[i]) : null
-  return match ? `${match[1]}${Number(match[2]) + 1}. ` : SNIPPETS.numbered
+  while (i >= 0 && (lines[i] ?? '').trim() === '') i--
+  const match = i >= 0 ? /^(\s*)(\d+)[.)]\s/.exec(lines[i] ?? '') : null
+  return match ? `${match[1] ?? ''}${Number(match[2]) + 1}. ` : SNIPPETS.numbered
 }
 
 const editorKey = (gen: number) => `editor-${gen}`
@@ -112,6 +112,23 @@ async function setMode($: EngineInterface, next: DraftMode): Promise<void> {
   await $.store.set(MODE_STORE_KEY, next)
 }
 
+// Bumped whenever the pane opens or closes. The right-click menu reads it, so
+// the menu is asked again then instead of reusing a stale answer.
+const paneChanges = atom({ plugin: 'prompt-drafter', key: 'paneChanges' } as const, 0)
+
+async function openPane($: EngineInterface): Promise<void> {
+  await $.ui.open({ id: PANE, title: 'Prompt draft', focus: true })
+  await update($, paneChanges, n => n + 1)
+}
+
+async function isPaneOpen($: EngineInterface): Promise<boolean> {
+  try {
+    return (await $.ui.panes()).some(pane => pane.id === PANE)
+  } catch {
+    return false
+  }
+}
+
 function bodyRows(e: { props?: unknown; viewport?: { rows?: number } }): number {
   const scroll = (e.props as { scroll?: { bodyRows?: number } } | undefined)?.scroll
   return scroll?.bodyRows ?? e.viewport?.rows ?? 30
@@ -145,9 +162,30 @@ export const register: Register = on => {
   })
 
   on('command.run', { command: 'draft' }, async $ => {
-    await $.ui.open({ id: PANE, title: 'Prompt draft', focus: true })
+    await openPane($)
 
     return { text: 'Prompt draft pane opened.' }
+  })
+
+  on('ui.close', async ($, e, next) => {
+    const closed = await next(e)
+    if (e.id === PANE) await update($, paneChanges, n => n + 1)
+
+    return closed
+  })
+
+  // Right-click menu (desktop app): offer to open the pane while it isn't open.
+  on('ui.render', { component: 'ContextMenu' }, async ($, e, next) => {
+    await read($, paneChanges)
+    if (await isPaneOpen($)) return next(e)
+
+    const { Button, Text } = $.ui.resolve(e)
+
+    return (
+      <Button key="prompt-drafter:open" label="Open prompt drafter" onPress={() => void openPane($)}>
+        Open prompt drafter <Text dimColor>· Draft and format a prompt before sending it</Text>
+      </Button>
+    )
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
