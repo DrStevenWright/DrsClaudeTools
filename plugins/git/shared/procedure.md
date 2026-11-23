@@ -90,8 +90,8 @@ git -C "<R>" rev-parse B
 5. Write the title and description by the rules (Pull requests). The base is `origin/<D>` unless the rules say otherwise.
    - Base them on every commit on the branch (`git -C "<R>" log origin/<D>..HEAD` and `git -C "<R>" diff origin/<D>...HEAD`), not just the latest.
    - **Testing:** use what was built and run in this session. If the session has no record, ask one short question with AskUserQuestion rather than guessing.
-6. No open PR: `gh pr create --repo O/N --base <D> --head <branch> --title "<title>" --body-file - <<'EOF' … EOF`.
-   Open PR: `gh pr edit <number> --repo O/N --title "<title>" --body-file - <<'EOF' … EOF`.
+6. No open PR: `gh pr create --repo O/N --base <D> --head <branch> --title "<title>" --body-file - <<'EOF' … EOF`, then open the new PR in the browser with `gh pr view <url> --repo O/N --web`.
+   Open PR: `gh pr edit <number> --repo O/N --title "<title>" --body-file - <<'EOF' … EOF`. Don't open it in the browser again: that happened when it was created.
 
 ## 9. Report
 

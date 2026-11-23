@@ -20,6 +20,28 @@ const problem = atom({ plugin: 'git', key: 'problem' } as const, '')
 
 type $ = EngineInterface
 
+// The installed version, read from this plugin's own plugin.json so it always
+// matches what is loaded. Undefined until read, or if it can't be read.
+let version: string | undefined
+
+async function loadVersion($: $): Promise<string | undefined> {
+  if (version !== undefined) {
+    return version
+  }
+  try {
+    const manifest = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)) as {
+      version?: unknown
+    }
+    if (typeof manifest.version === 'string') {
+      version = manifest.version
+    }
+  } catch {
+    // Leave it unknown: the pane works the same without it.
+  }
+
+  return version
+}
+
 async function git($: $, args: string[], cwd?: string) {
   try {
     const argv = cwd === undefined ? ['git', ...args] : ['git', '-C', cwd, ...args]
@@ -222,24 +244,24 @@ function unavailable(repo: GitRepo, command: string): string | undefined {
   }
 }
 
-const EXTRAS: readonly (readonly [string, string])[] = [
-  ['git:commit-staged', 'Commit staged'],
-  ['git:publish-committed', 'Publish committed'],
-  ['git:prune', 'Prune merged branches'],
+// Right-click menu rows, in order: command, label, the dim line after it, and
+// whether the row stays while the pane is shown (the pane has no button for it).
+const MENU: readonly (readonly [string, string, string, boolean])[] = [
+  ['git:stage', 'Stage', 'Stages all local edits', false],
+  ['git:commit', 'Commit', 'Stages and commits all local edits', false],
+  ['git:commit-staged', 'Commit staged', 'Commits staged local edits', true],
+  ['git:publish', 'Publish', 'Stages, commits and pushes all local edits, then opens or updates a PR', false],
+  [
+    'git:publish-committed',
+    'Publish committed',
+    'Pushes existing commits, then opens or updates a PR (ignoring uncommitted edits)',
+    true,
+  ],
+  ['git:merged', 'Merged', 'Syncs repo and deletes branch following a PR merge', false],
+  ['git:split-commits', 'Split', 'Suggests and splits subset of local edits into its own branch', false],
+  ['git:split-resume', 'Resume split', 'Returns to pre-split branch and restores parked edits', false],
+  ['git:prune', 'Prune merged branches', 'Deletes local branches whose PRs have merged', true],
 ]
-
-// The dim line after each right-click menu row.
-const DESCRIPTIONS: Readonly<Record<string, string>> = {
-  'git:stage': 'Stages every change',
-  'git:commit': 'Stages everything and commits',
-  'git:publish': 'Commits, pushes and opens or updates the PR',
-  'git:merged': 'After the PR merges, tidies up the branch',
-  'git:split-commits': 'Splits one change off onto its own branch',
-  'git:split-resume': 'Goes back and restores the parked edits',
-  'git:commit-staged': "Commits only what's already staged",
-  'git:publish-committed': 'Pushes existing commits and opens or updates the PR, ignoring uncommitted changes',
-  'git:prune': 'Deletes local branches whose PRs have merged',
-}
 
 const MAIN: readonly (readonly [string, string])[] = [
   ['git:stage', 'Stage'],
@@ -288,6 +310,7 @@ export const register: Register = on => {
     const list = await read($, repos)
     const running = await read($, busy)
     const issue = await read($, problem)
+    const v = await loadVersion($)
 
     const buttons = (repo: GitRepo) =>
       MAIN.map(([command, label]) => {
@@ -313,37 +336,41 @@ export const register: Register = on => {
         {list.map(repo => (
           <Box key={repo.path} flexDirection="column">
             <Text>
-              <Text bold>{repo.name}</Text> · {repo.branch ?? 'detached'} · {summary(repo)}
+              <Text bold>{repo.name}</Text> · <Text color="suggestion">{repo.branch ?? 'detached'}</Text> ·{' '}
+              <Text color={repo.changed > 0 || repo.ahead > 0 ? 'warning' : 'subtle'}>{summary(repo)}</Text>
               {repo.splitFrom !== null && <Text dimColor> · split from {repo.splitFrom}</Text>}
             </Text>
             {repo.isParked && <Text color="warning">edits parked by a split</Text>}
             {repo.warnings.map(warning => (
               <Text color="warning">{warning}</Text>
             ))}
-            <Box flexDirection="row" flexWrap="wrap" gap={1}>
+            <Box flexDirection="row" flexWrap="wrap" gap={1} marginTop="sm">
               {buttons(repo)}
             </Box>
           </Box>
         ))}
         {running !== '' && <Text dimColor>Running {running}</Text>}
+        {v !== undefined && <Text dimColor>git v{v}</Text>}
       </Box>
     )
   })
 
-  // Right-click menu: the full set when the pane isn't on screen, the extras when it is.
+  // Right-click menu: every command while the pane isn't on screen; while it
+  // is, only the ones the pane has no button for. The app has no submenus, so
+  // each row keeps a `Git:` prefix to group them.
   on('ui.render', { component: 'ContextMenu' }, async ($, e) => {
     const { Box, Button, Text } = $.ui.resolve(e)
     const isShown = await isPaneShown($)
-    const items = isShown ? EXTRAS : [...MAIN, ...EXTRAS]
+    const rows = MENU.filter(([, , , isExtra]) => !isShown || isExtra)
 
     return (
       <Box flexDirection="column">
-        <Button key="git:pane" label="Show Git tools pane" onPress={() => openPane($)}>
-          Show Git tools pane <Text dimColor>· Git commands for each repo</Text>
+        <Button key="git:pane" label="Open Git tools" onPress={() => openPane($)}>
+          Open Git tools <Text dimColor>· Git commands for each repo</Text>
         </Button>
-        {items.map(([command, label]) => (
+        {rows.map(([command, label, description]) => (
           <Button key={command} label={`Git: ${label}`} onPress={() => runCommand($, command, '')}>
-            Git: {label} <Text dimColor>· {DESCRIPTIONS[command]}</Text>
+            Git: {label} <Text dimColor>· {description}</Text>
           </Button>
         ))}
       </Box>
