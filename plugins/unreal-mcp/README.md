@@ -38,6 +38,14 @@ Start the Unreal Editor, then start Claude Code in the project folder. The statu
 
 If you start Claude Code first, that's fine: once the editor is up, Claude Code usually connects by itself. If it hasn't connected within a minute or so, the status line asks you to reconnect: press **Reconnect** on **Unreal MCP** under Connectors (in the terminal, use `/mcp`).
 
+For example, with the editor closed, then running but not connected, then connected:
+
+![The status line reading "unreal-mcp ○ offline"](docs/status-offline.png)
+
+![The status line reading "unreal-mcp ◐ editor up · not connected ⓘ"](docs/status-not-connected.png)
+
+![The status line reading "unreal-mcp ● connected"](docs/status-connected.png)
+
 | Status line (after `unreal-mcp`) | What to do |
 | --- | --- |
 | `● connected` | Nothing: it's working. |
@@ -52,6 +60,14 @@ If you start Claude Code first, that's fine: once the editor is up, Claude Code 
 `ⓘ` means a short message pops up to explain. The status line updates every 15 to 30 seconds, and stays empty in folders that aren't Unreal projects.
 
 If **Unreal MCP** isn't listed under Connectors, start a new chat in the project folder: a chat started before the plugin was installed or updated doesn't have it.
+
+## Checking the version
+
+Type `/unreal-mcp` to see the installed version, the status the status line shows for this session and the URL being checked, for example:
+
+```
+unreal-mcp v0.8.0 · ● connected · http://127.0.0.1:8000/mcp
+```
 
 ## Changing the port
 

@@ -187,6 +187,44 @@ type SessionState = {
   shadowed: boolean                // the project's entry hides the plugin's server
   projectNames: string[]           // .mcp.json names of the project's copies of the server
   toasted: Set<string>             // states whose toast has shown since the state was entered
+  checked: boolean                 // the first check has finished
+}
+
+// Each session's state by session id, so /unreal-mcp can report the session it runs in.
+const sessions = new Map<string, SessionState>()
+
+// The installed version, read from this plugin's own plugin.json so it always
+// matches what is loaded. Undefined until read, or if it can't be read.
+let version: string | undefined
+
+async function loadVersion($: EngineInterface): Promise<string | undefined> {
+  if (version !== undefined) return version
+  try {
+    const manifest = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)) as {
+      version?: unknown
+    }
+    if (typeof manifest.version === 'string') version = manifest.version
+  } catch {
+    // Leave it unknown: the report works the same without it.
+  }
+  return version
+}
+
+// /unreal-mcp's reply: the version, this session's status as the status line
+// shows it, and the URL being checked.
+async function report($: EngineInterface, settings: Settings): Promise<string> {
+  const v = await loadVersion($)
+  let state: SessionState | undefined
+  try {
+    state = sessions.get(await $.session.id())
+  } catch {
+    state = undefined
+  }
+  const status = !state || !state.checked
+    ? 'checking…'
+    : state.last ?? 'inactive (not an Unreal project)'
+  const url = settings.urlUnset ? '(URL not set)' : settings.endpoint
+  return [v ? `unreal-mcp v${v}` : 'unreal-mcp', status, url].join(' · ')
 }
 
 // Shows a state's detail as a toast once each time the state is entered:
@@ -297,6 +335,7 @@ async function guardedRefresh($: EngineInterface, cwd: string, settings: Setting
   try {
     await refresh($, cwd, settings, state)
   } finally {
+    state.checked = true
     state.inFlight = false
   }
 }
@@ -306,10 +345,20 @@ export const register: Register = (on, options) => {
 
   on('session.start', async ($, e, next) => {
     const result = await next(e)
+    // A refused registration mustn't stop the status line.
+    await $.command.register({
+      name: 'unreal-mcp',
+      description: 'Show the unreal-mcp version, connection status and URL',
+    }).catch(() => undefined)
     const state: SessionState = {
       last: undefined, upAtStart: undefined, connected: false, everConnected: false, waitingChecks: 0,
       tick: 0, inFlight: false,
-      shadowed: false, projectNames: [], toasted: new Set<string>(),
+      shadowed: false, projectNames: [], toasted: new Set<string>(), checked: false,
+    }
+    try {
+      sessions.set(await $.session.id(), state)
+    } catch {
+      // Without an id, /unreal-mcp reports "checking…" for this session.
     }
     void guardedRefresh($, e.cwd, settings, state)
     $.clock.every(POLL_MS, () => {
@@ -320,4 +369,11 @@ export const register: Register = (on, options) => {
     })
     return result
   })
+
+  on('session.end', async ($, e, next) => {
+    sessions.delete(e.sessionId)
+    return next(e)
+  })
+
+  on('command.run', { command: 'unreal-mcp' }, async $ => ({ text: await report($, settings) }))
 }
