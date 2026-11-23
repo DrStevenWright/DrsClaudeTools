@@ -20,13 +20,13 @@ Choose the **user** scope to have the drafter in every session.
 
 ## Using it
 
-1. **Open the pane.** Type `/draft`, or in the desktop app right-click anywhere in the conversation and choose **Open prompt drafter**. (That menu item only appears while the pane isn't open.)
+1. **Open the pane.** Type `/draft`, or in the desktop app right-click anywhere in the conversation and choose **Open prompt drafter**. (That menu item only appears while the pane isn't on screen: closed, hidden, or behind another pane's tab.)
 2. **Write your prompt** in the editor. **Shift+Enter** starts a new line. **Enter** never sends anything: it only saves the draft, so a half-written prompt can't go off by accident.
 3. **Format it** with Markdown, either by typing it (`- `, `1. `, `## `, `> `, ```` ``` ````) or with the toolbar buttons, which add it to the end of the draft for you.
 4. **Check it** on the **Preview** tab, or use **Split** to see the preview update under the editor as you type.
 5. **Send it.** **Send to prompt box** moves the draft into the normal message box and clears the pane. Review it there and press Enter to send it to Claude.
 
-Your draft is saved as you type and comes back in later sessions, so you can close the pane and return to it.
+Your draft is saved as you type and comes back in later sessions, so you can close the pane and return to it. **✕ Close**, next to the tabs, closes the pane; the app's own hide button only hides it. The dim line at the bottom of the pane shows the installed version, and so does `/draft`'s reply.
 
 ## The pane at a glance
 
@@ -38,7 +38,7 @@ Your draft is saved as you type and comes back in later sessions, so you can clo
 | **Preview** | The draft rendered as Markdown, exactly as Claude will read it. |
 | **Split** | The editor with a live preview underneath, as in the picture above. The preview catches up shortly after you stop typing. |
 
-The tab you pick is remembered, and switching tabs keeps your text.
+The tab you pick is remembered, and switching tabs keeps your text. **✕ Close**, at the end of the tab row, saves the draft and closes the pane.
 
 **Toolbar**
 

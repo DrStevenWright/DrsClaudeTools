@@ -9,9 +9,27 @@ const MODE_STORE_KEY = 'mode'
 // How long typing must pause before the preview (and saved draft) catch up.
 const PREVIEW_DELAY_MS = 400
 // Rows the Write tab spends on everything but the editor (tabs, toolbar,
-// bottom buttons and the gaps between), with some slack for a wrapped toolbar,
-// so the pane never grows past its window and never scrolls itself.
-const WRITE_OVERHEAD_ROWS = 10
+// bottom buttons, the version line and the gaps between), with some slack for
+// a wrapped toolbar, so the pane never grows past its window and never scrolls
+// itself.
+const WRITE_OVERHEAD_ROWS = 12
+
+// The installed version, read from this plugin's own plugin.json so it always
+// matches what is loaded. Undefined until read, or if it can't be read.
+let version: string | undefined
+
+async function loadVersion($: EngineInterface): Promise<string | undefined> {
+  if (version !== undefined) return version
+  try {
+    const manifest = JSON.parse(await $.fs.read(`${$.plugin.root}/.claude-plugin/plugin.json`)) as {
+      version?: unknown
+    }
+    if (typeof manifest.version === 'string') version = manifest.version
+  } catch {
+    // Leave it unknown: the pane works the same without it.
+  }
+  return version
+}
 
 // The draft as the preview and the saved copy know it; mirrored to $.store so
 // it survives restarts. Typing reaches it only after a pause.
@@ -121,12 +139,24 @@ async function openPane($: EngineInterface): Promise<void> {
   await update($, paneChanges, n => n + 1)
 }
 
-async function isPaneOpen($: EngineInterface): Promise<boolean> {
+// Whether the pane is on screen. A pane the person hid (or that sits behind
+// another pane's tab) is still open but not shown, and counts as not shown.
+async function isPaneShown($: EngineInterface): Promise<boolean> {
   try {
-    return (await $.ui.panes()).some(pane => pane.id === PANE)
+    return (await $.ui.panes()).some(pane => pane.id === PANE && pane.isShown)
   } catch {
     return false
   }
+}
+
+// Close the pane for real (not just hide it). Whatever was typed is saved
+// first, so nothing is lost.
+async function closePane($: EngineInterface): Promise<void> {
+  const text = await currentText($)
+  typingToken++
+  await update($, draft, () => text)
+  await $.store.set(STORE_KEY, text)
+  await $.ui.close({ id: PANE }).catch(() => undefined)
 }
 
 function bodyRows(e: { props?: unknown; viewport?: { rows?: number } }): number {
@@ -164,7 +194,9 @@ export const register: Register = on => {
   on('command.run', { command: 'draft' }, async $ => {
     await openPane($)
 
-    return { text: 'Prompt draft pane opened.' }
+    const v = await loadVersion($)
+
+    return { text: v ? `Prompt draft pane opened (v${v}).` : 'Prompt draft pane opened.' }
   })
 
   on('ui.close', async ($, e, next) => {
@@ -174,10 +206,11 @@ export const register: Register = on => {
     return closed
   })
 
-  // Right-click menu (desktop app): offer to open the pane while it isn't open.
+  // Right-click menu (desktop app): offer to show the pane while it isn't on
+  // screen, whether closed or hidden.
   on('ui.render', { component: 'ContextMenu' }, async ($, e, next) => {
     await read($, paneChanges)
-    if (await isPaneOpen($)) return next(e)
+    if (await isPaneShown($)) return next(e)
 
     const { Button, Text } = $.ui.resolve(e)
 
@@ -219,6 +252,7 @@ export const register: Register = on => {
             onPress={() => void setMode($, m.mode)}
           />
         ))}
+        <Button key="close" label="✕ Close" onPress={() => void closePane($)} />
       </Box>
     )
 
@@ -229,11 +263,15 @@ export const register: Register = on => {
         <Text dimColor>Nothing to preview yet.</Text>
       )
 
+    const v = await loadVersion($)
+    const footer = v ? <Text dimColor>prompt-drafter v{v}</Text> : null
+
     if (current === 'preview') {
       return (
         <Box flexDirection="column" gap={1}>
           {tabs}
           {previewBody}
+          {footer}
         </Box>
       )
     }
@@ -303,6 +341,7 @@ export const register: Register = on => {
 
         {current === 'split' && <Text dimColor>Preview</Text>}
         {current === 'split' && previewBody}
+        {footer}
       </Box>
     )
   })

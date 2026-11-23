@@ -43,7 +43,7 @@ test('Write is the default: the editor fills the pane and nothing else scrolls',
   const clock = mock.clock(on)
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
 
-  expect((await editor(ui)).props.rows).toBe(30)
+  expect((await editor(ui)).props.rows).toBe(28)
   await type(ui, 'Some text')
   await clock.advance(500)
   expect(await ui.find({ type: 'Markdown' })).toBeUndefined()
@@ -219,4 +219,65 @@ test('the right-click menu offers to open the pane while it is closed', async ($
   const again = await $.ui.mount({ ...MENU, requestId: 'menu-2' })
   expect(await again.find({ type: 'Button', text: /Open prompt drafter/ })).toBeUndefined()
   await again.unmount()
+})
+
+test('the right-click menu also offers the pane while it is hidden', async ($, on) => {
+  on('ui.panes', () => ({
+    value: [{ id: 'prompt-drafter', title: 'Prompt draft', isShown: false, isFocused: false, isPlaced: true }],
+  }))
+
+  const menu = await $.ui.mount(MENU)
+  expect((await menu.find({ type: 'Button', text: /Open prompt drafter/ }))?.key).toBe(
+    'prompt-drafter:open',
+  )
+  await menu.unmount()
+})
+
+test('Close saves what was typed and closes the pane', async ($, on) => {
+  const stored: Record<string, unknown> = {}
+  on('store.get', (_, e) => ({ value: stored[e.key] }))
+  on('store.set', (_, e) => {
+    stored[e.key] = e.value
+    return { value: undefined }
+  })
+  mock.clock(on)
+  const closed: string[] = []
+  on('ui.close', (_, e) => {
+    closed.push(e.id)
+    return { value: undefined }
+  })
+
+  const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await type(ui, 'Unsaved words')
+  await ui.press({ key: 'close' })
+
+  expect(closed).toEqual(['prompt-drafter'])
+  expect(stored.draft).toBe('Unsaved words')
+  await ui.unmount()
+})
+
+test('the pane and /draft show the installed version from plugin.json', async ($, on) => {
+  mock.store(on)
+  mock.clock(on)
+  // The path comes with the platform's separators, so match either.
+  on('fs.read', (_, e) => ({
+    value: /[\\/]\.claude-plugin[\\/]plugin\.json$/.test(e.path) ? '{"version":"9.8.7"}' : '',
+  }))
+  on('ui.open', () => ({ value: { isPlaced: true } }))
+
+  for (const surface of ['terminal', 'desktop'] as const) {
+    const ui = await $.ui.mount({ ...PANE, surface })
+    expect((await ui.find({ type: 'Text', text: /prompt-drafter v/ }))?.text).toBe(
+      'prompt-drafter v9.8.7',
+    )
+    await ui.unmount()
+  }
+
+  const ran = await $.command.run({
+    command: 'draft',
+    args: '',
+    origin: { kind: 'composer' },
+    presentation: { isFullscreen: false, columns: 100 },
+  })
+  expect(ran.text).toBe('Prompt draft pane opened (v9.8.7).')
 })
