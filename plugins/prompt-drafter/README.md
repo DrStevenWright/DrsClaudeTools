@@ -1,12 +1,14 @@
 # prompt-drafter
 
-A side pane for drafting and formatting prompts before sending them to the prompt box, so you don't have to write long prompts in a separate editor and paste them in. This avoids the risk and the token cost of accidentally submitting your prompt before it is ready by mistyping or, as I frequently do, forget that Enter submits the prompt rather than adds a line return.]
+One of the annoying things about Claude is that the universal key for line return (Enter) is instead interpreted as an instruction to submit the current prompt in whatever state it is in. For me at least, this happens quite frequently and wastes tokens. Arguably, prompts do not need human-readable formatting; but humans reading and editing those prompts do, and it is in this area that the standard Claude interface is sadly lacking.
+
+The following mod for Claude Code seeks to address some of these flaws, within the limits imposed by Claude's API. It provides a side-pane for editing prompts without the risk of accidentally sending them before you are ready. You can add line returns, bullet points, lists, code and quote blocks to your heart's content, and then send it to the prompt box with the click of a button when ready. This is especially helpful when drafting long and/or complex prompts.
 
 ![The prompt drafter in Split mode: tabs and formatting buttons at the top, the Markdown draft in the editor, and the rendered preview below](images/drafter-split.png)
 
 > **Experimental.** This mod is built on Claude Code's mod API, which is marked early access and may change between releases without notice. An update to Claude Code may break the pane until the mod is updated.
 
-## Install
+## Installation
 
 In a terminal Claude Code session:
 
@@ -18,66 +20,67 @@ In the desktop app: click **+** next to the prompt box, then **Plugins**, **Add 
 
 Choose the **user** scope to have the drafter in every session.
 
-## Using it
+## Usage
 
-1. **Open the pane.** Type `/draft`, or in the desktop app right-click anywhere in the conversation and choose **Open prompt drafter**. (That menu item only appears while the pane isn't on screen: closed, hidden, or behind another pane's tab.)
-2. **Write your prompt** in the editor. **Shift+Enter** starts a new line. **Enter** never sends anything: it only saves the draft, so a half-written prompt can't go off by accident.
-3. **Format it** with Markdown, either by typing it (`- `, `1. `, `## `, `> `, ```` ``` ````) or with the toolbar buttons, which add it to the end of the draft for you.
-4. **Check it** on the **Preview** tab, or use **Split** to see the preview update under the editor as you type.
+1. **Open the pane.** Type `/draft` in the prompt window, or right-click anywhere in the conversation and select **Open prompt drafter** from the context menu. The context menu item only appears while the pane isn't on screen (i.e. when the pane is closed, hidden, or behind another tab).
+2. **Write your prompt** in the editor. You still need to press **Shift+Enter** to start a new line (it is not currently possible to reassign the Enter key). However, **Enter** now only saves the draft, and does not submit anything, whether deliberately or accidentally.
+3. **Format it** with Markdown, either by typing it (`- `, `1. `, `## `, `> `, ```` ``` ````) or with the toolbar buttons, which add the appropriate Markdown syntax to the end of the draft for you.
+4. **Check it** on the **Preview** tab, or use **Split** to see the preview alongside the draft.
 5. **Send it.** **Send to prompt box** moves the draft into the normal message box and clears the pane. Review it there and press Enter to send it to Claude.
 
-Your draft is saved as you type and comes back in later sessions, so you can close the pane and return to it. **✕ Close**, next to the tabs, closes the pane; the app's own hide button only hides it. The dim line at the bottom of the pane shows the installed version, and so does `/draft`'s reply.
+Your draft is saved as you type and comes back in later sessions, so you can close the pane and return to it. The **✕ Close** button, as you would expect, closes the pane. (Hiding the side panel only hides the pane and does not close it.)
 
-## The pane at a glance
+## Draft pane at a glance
 
-**Tabs**
+**Tabs row**
 
 | Tab | Shows |
 | --- | --- |
 | **Write** (default) | The editor alone, sized to fill the pane, so the mouse wheel only scrolls your draft. Best for long prompts. |
 | **Preview** | The draft rendered as Markdown, exactly as Claude will read it. |
 | **Split** | The editor with a live preview underneath, as in the picture above. The preview catches up shortly after you stop typing. |
+| **Close** | Saves the draft and closes the pane. |
 
-The tab you pick is remembered, and switching tabs keeps your text. **✕ Close**, at the end of the tab row, saves the draft and closes the pane.
+The tab you pick is remembered, and switching tabs keeps your text.
 
-**Toolbar**
+**Toolbar row**
 
 | Button | Adds |
 | --- | --- |
-| **• Bullet** | A bullet point: `- ` |
-| **1. List** | The next numbered item: `1. `, or `3. ` after a `2. ` line, keeping its indentation |
-| **{ } Code block** | A fenced code block, labelled `cpp`. Change the label to `text`, `log` or another language as needed. |
-| **# Heading** | A heading: `## ` |
-| **❝ Quote** | A quoted line: `> `. Press again for another quoted line. |
-
-Buttons pressed after a quoted line start with a blank line, so the new element isn't swallowed by the quote.
+| **• Bullet** | Bullet point: `- `. |
+| **1. List** | Next numbered item: `1. `, or `3. ` after a `2. ` line, keeping its indentation. |
+| **{ } Code block** | Fenced code block, labelled `cpp`. Change the label to `text`, `log` or another language as needed. |
+| **# Heading** | Heading: `## `. |
+| **❝ Quote** | Quoted line: `> `. Press again for another quoted line. |
 
 **Bottom row**
 
 | Button | Does |
 | --- | --- |
 | **Send to prompt box** | Replaces whatever is in the message box with the draft, then clears the pane. Nothing is sent until you press Enter. |
-| **Copy** | Puts the draft on the clipboard. |
+| **Copy** | Copies the draft to the clipboard. |
 | **Clear** | Empties the draft. |
 
 **Tips**
 
-- **Ending a quote:** Markdown keeps a quote going until a blank line, so press **Shift+Enter twice** before carrying on with normal text.
+- **Quotes need to be followed by a blank line** to prevent them swallowing the subsequent text, so press **Shift+Enter twice** before carrying on with normal text. The formatting buttons here will automatically add one for you.
 - **Pasting logs or compiler errors:** use a code block rather than a quote. Text in a code block is kept exactly as pasted, while `*`, `_` and `#` inside a quote are read as formatting.
 
-## Known Issues/limitations
+## Attachments
 
-These come from what the mod API offers today, not from choices in the mod:
+Often a prompt will need to refer to a specific attachment. Although you cannot add attachments to the draft, you can still add the attachments in the normal prompt box, either before or after you send your draft to the prompt box.
 
+## Known issues and limitations
+
+These come from the limitations of Claude's mod API at the time of writing:
+
+- **Desktop and terminal only.** Claude's mobile app does not currently support the prompt drafter pane, and probably does not need it since it already distinguishes line returns from send (different buttons on the keyboard in IOS).
 - **It is not a WYSIWYG editor.** You type Markdown into a plain-text field and see it rendered in the Preview or Split tab. Mods can't draw a rich-text field.
 - **Toolbar buttons only add at the end of the draft.** A mod isn't told where the cursor is or what text is selected, so a button can't insert at the cursor or wrap a selection (for example, quote the selected lines).
-- **Lists don't continue automatically.** Shift+Enter after a list item gives a plain new line; type the next `- ` yourself or press the button. Continuing lists while typing was tried and removed: rewriting the text while you type made the cursor jump and missed some keystrokes.
-- **The Save button beside the editor takes some width.** It's drawn by Claude Code to show what Enter does, and a mod can only change its wording, not move or hide it.
+- **Lists don't continue automatically.** Shift+Enter after a list item gives a plain new line; type the next `- ` yourself or press the button. Continuing lists while typing was tried and removed, because rewriting the text while you type made the cursor jump and missed some keystrokes.
+- **The Save button beside the editor takes some width.** It's drawn by Claude Code to show what Enter does. A mod can only change its wording, not move or hide it.
 - **Split mode can make the pane scroll.** With a long draft the preview makes the pane taller than its window, so the mouse wheel may scroll the pane instead of the editor. Use the Write tab for long drafts.
-- **The right-click menu item is desktop-only.** Elsewhere, use `/draft`.
-- **No mobile support.** The Claude mobile app doesn't draw text fields in panes yet, so the pane shows a notice there. It works in the desktop app and in a terminal.
-- **One draft at a time.** There's a single saved draft, shared by all sessions: two sessions drafting at once overwrite each other's saved copy.
-- **Copy may not work in the desktop app.** The mod API documents clipboard writes for the terminal only, so the button shows "Could not copy the draft" if the app refuses. **Send to prompt box** works everywhere.
+- **One draft at a time.** There's a single saved draft, shared by all sessions. Two sessions drafting at once overwrite each other's saved copy.
 
 ## Development
 
