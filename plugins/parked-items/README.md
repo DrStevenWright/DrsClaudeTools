@@ -6,6 +6,8 @@ You might put something off because you're blocked, busy with something else, or
 Parked Items doesn't care why. It keeps a single list of everything you've parked, across all your sessions and
 projects, with the chat each item came from and any notes you added.
 
+![The Parked items pane: the park dialog with Title, Notes and From boxes above Open and Closed tabs, and two open items grouped under their project, each with Edit, Close and Delete buttons](images/parked-items-pane.png)
+
 ## Using it
 
 - **`/park`** opens the park dialog in the pane, with Title, Notes and From boxes. From starts as the first words of
@@ -25,7 +27,11 @@ projects, with the chat each item came from and any notes you added.
   the open items from the current project, then the open items across all projects. Click it to open the pane.
   It hides while the pane is open.
 
-The Parked items pane lists your items grouped by project, with **Open** and **Closed** tabs. For each item you can:
+![Right-clicking selected text in a chat and choosing Park item for later opens the park dialog with the selection in Notes](images/park-from-selection.png)
+
+The Parked items pane lists your items grouped by project, with **Open** and **Closed** tabs. It reads the list again
+when you open it, send a message, or Claude finishes replying. If you leave it open while parking from another chat,
+press **↻ Refresh** to see that item here. For each item you can:
 
 - **Edit** its title, notes and From
 - **Close** it when it's done (it moves to Closed, and can be reopened)
