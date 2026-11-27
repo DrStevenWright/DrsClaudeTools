@@ -1,6 +1,6 @@
 {
   "name": "parked-items",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "Park follow-up work from any chat and keep it in a pane, so nothing you defer gets lost.",
   "author": { "name": "DrStevenWright" },
   "license": "MIT",

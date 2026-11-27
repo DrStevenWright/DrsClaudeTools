@@ -1,53 +1,54 @@
 # Parked Items
 
-Park follow-up work from any Claude Code chat, and find it again later in one place.
+Claude has a tendency to fire all kinds of options at you all at once - more than any human can deal with immediately. Inevitably you will need to skip or defer things until you're ready. If you are working in multiple sessions in parallel then it becomes all too easy to lose track of things you meant to pick up later.
 
-You might put something off because you're blocked, busy with something else, or want to think about it more.
-Parked Items doesn't care why. It keeps a single list of everything you've parked, across all your sessions and
-projects, with the chat each item came from and any notes you added.
+This plugin allows you to 'park' suggestions from any Claude Code chat, and find them again later in one place. For example, you might want to defer something because it is blocked, you are busy with something else, or you want to think about it some more before acting on it.
 
-![The Parked items pane: the park dialog with Title, Notes and From boxes above Open and Closed tabs, and two open items grouped under their project, each with Edit, Close and Delete buttons](images/parked-items-pane.png)
+Parked items are tracked and presented in a convenient side-pane where you can edit, close or delete them as necessary - all organised by repository.
 
-## Using it
+<p align="center">
+  <img src="images/parked-items-pane.png" width="400" alt="The Parked items pane: the park dialog with Title, Notes and From boxes above Open and Closed tabs, and two open items grouped under their project, each with Edit, Close and Delete buttons">
+  <br>
+  <em>Parked items dialog and open items pane.</em>
+</p>
 
-- **`/park`** opens the park dialog in the pane, with Title, Notes and From boxes. From starts as the first words of
-  the chat and can be changed, or cleared to leave it out. Anything you type after the command
-  becomes the title: `/park Fix the flaky login test`. Press **Park** to save it. Nothing is saved until you do.
-- **Right-click → Park item for later** (desktop app) on text you've selected in the chat, or on a message, opens the same
-  dialog with that text already in the notes. You give it a title.
-- **+ Park** in the pane opens the dialog empty.
-- **Suggest**, in the dialog, asks Claude for titles. With a title or notes filled in, Claude works from those and the
-  last few messages; with neither, it reads the conversation. Press a suggestion to use its title. Its notes go in too
-  if the Notes box is empty or still holds an earlier suggestion's notes. Claude is only asked when you press Suggest.
-- **Claude offers** to park follow-ups, if you turn that on (see Settings): when a chat decides to put some work off,
-  Claude opens the dialog with a proposed title and notes. You edit it and press Park, or Cancel. Nothing is saved
-  unless you press Park.
+<p align="center">
+  <img src="images/park-from-selection.png" alt="Right-clicking selected text in a chat and choosing Park item for later opens the park dialog with the selection in Notes">
+  <br>
+  <em>Example of parking an item from selected text.</em>
+</p>
+
+## Usage
+
+Parking an item:
+- **`/park`** opens the park dialog in the side pane, with Title, Notes and From fields. The optional From field is for noting which chat the parked item came from. Anything you type after the command becomes the title: `/park Fix the flaky login test`. Press **Park** to save it. Nothing is saved until you do.
+- **Right-click → Park item for later** (desktop app) opens the same dialog with the Notes field automatically populated with any text you have highlighted in the chat. You then need to provide the title.
+- **+ Park** in the side pane opens the same dialog with all fields empty.
+- **Suggest** asks Claude to automatically deduce what you might want to park from the contents of the chat, then supplies some options for you to choose from. Selecting one of these will automatically populate the Title and Notes fields for you.
+- **Claude offers** to park follow-up items when it recognises from the chat that a decision has been made to defer some work. Off by default (see Settings).
+
+Viewing parked items:
 - **`/parked`** opens the Parked items pane.
-- While anything is parked, a reminder line above the prompt shows something like **◷ 2 parked issues (3 total)**:
-  the open items from the current project, then the open items across all projects. Click it to open the pane.
-  It hides while the pane is open.
+- While anything is parked, a reminder line above the prompt box will display something like **◷ 2 parked issues (3 total)**. This gives an overview of the open items from the current project, and the open items across all projects. Click it to open the Parked items side pane. The reminder automatically hides while the pane is already open.
+- The Parked items pane lists your items grouped by project, with **Open** and **Closed** tabs. It refreshes the list whenever you open it, or if you press the **↻** button.
 
-![Right-clicking selected text in a chat and choosing Park item for later opens the park dialog with the selection in Notes](images/park-from-selection.png)
-
-The Parked items pane lists your items grouped by project, with **Open** and **Closed** tabs. It reads the list again
-when you open it, send a message, or Claude finishes replying. If you leave it open while parking from another chat,
-press **↻ Refresh** to see that item here. For each item you can:
-
-- **Edit** its title, notes and From
-- **Close** it when it's done (it moves to Closed, and can be reopened)
-- **Delete** it for good, after a confirmation
+For each parked item you can:
+- **Edit** its Title, Notes and From fields.
+- **Close** it when the deferred work is done. (It moves to the Closed tab from where it can be reopened.)
+- **Delete** it permanently.
 
 ## Settings
 
-- **Claude offers to park follow-ups** (off by default). When on, Claude can open the park dialog itself. This adds a
-  tool and a short instruction to each request Claude makes, about 300 tokens, mostly served from the prompt cache.
-  Set it when you install the mod, or later in Claude Code's config menu (`/config`). A change applies from the next
-  chat you start.
+- **Claude offers to park follow-ups** (off by default). While enabled, Claude can offer to park items it identified from the chat as being deferred. It can then open the park dialog itself. This incurs the cost of a tool and short instruction to every Claude request, about 300 tokens, mostly served from the prompt cache. Set it when you install the mod, or later in Claude Code's config menu (`/config`). A change applies from the next chat you start.
 
 ## Privacy
 
 The list is stored on your own computer, by Claude Code, for this mod only. Nothing is sent anywhere, apart from the
 request to Claude that suggests what to park, which uses your normal Claude session.
+
+## Known issues & limitations
+- It is not currently possible to link the parked items back to the chat from which they were spawned. The mod does track the session IDs, but it is not currently possible to use this to open the chat or fork a new chat from it.
+- Custom session titles are not visible to the mod - it can only retrieve the chat's opening request text.
 
 ## Installation
 

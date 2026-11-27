@@ -257,49 +257,6 @@ test('right-click on selected text puts it in the notes, without asking Claude',
   await menu.unmount()
 })
 
-test('right-click on a message puts the message in the notes', async ($, on) => {
-  const world = engine(on)
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  const menu = await $.ui.mount({ ...MENU, props: { row: { component: 'AssistantMessage', requestId: 'm2' } } })
-  await menu.press({ key: 'park-this' })
-
-  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  await pane.input({ key: 'park-title', text: 'Split the slow tests', kind: 'change' })
-  await pane.press({ key: 'park-save' })
-  expect(world.stored()[0]?.notes).toBe('Later we should also split the slow tests out.')
-  await pane.unmount()
-  await menu.unmount()
-})
-
-test("right-click on a message leaves out Claude Code's command wrappers", async ($, on) => {
-  const world = engine(on)
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  const menu = await $.ui.mount({ ...MENU, props: { row: { component: 'UserMessage', requestId: 'm3' } } })
-  await menu.press({ key: 'park-this' })
-
-  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  await pane.input({ key: 'park-title', text: 'Rename fixtures', kind: 'change' })
-  await pane.press({ key: 'park-save' })
-  expect(world.stored()[0]?.notes).toBe('And rename the fixtures folder.')
-  expect(world.stored()[0]?.from.chat).toBe('Help me tidy up the test suite')
-  await pane.unmount()
-  await menu.unmount()
-})
-
-test('right-click on a bare slash command leaves the notes empty', async ($, on) => {
-  const world = engine(on)
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  const menu = await $.ui.mount({ ...MENU, props: { row: { component: 'UserMessage', requestId: 'm0' } } })
-  await menu.press({ key: 'park-this' })
-
-  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  await pane.input({ key: 'park-title', text: 'Something', kind: 'change' })
-  await pane.press({ key: 'park-save' })
-  expect(world.stored()[0]?.notes).toBe('')
-  await pane.unmount()
-  await menu.unmount()
-})
-
 test('right-click on anything else adds no row', async ($, on) => {
   engine(on)
   const menu = await $.ui.mount({ ...MENU, props: { link: { href: 'https://example.com' } } })
@@ -340,14 +297,14 @@ test('picking another suggestion replaces notes a suggestion filled, but not you
   await ui.unmount()
 })
 
-test('From starts as the first words of the chat, can be changed, and is left out when blank', async ($, on) => {
+test('From starts empty, can be filled in, and is left out when blank', async ($, on) => {
   const world = engine(on)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
 
   await $.command.run({ command: 'park', args: 'First point', ...RUN })
   await ui.press({ key: 'park-save' })
-  expect(world.stored()[0]?.from.chat).toBe('Help me tidy up the test suite')
+  expect(world.stored()[0]?.from.chat).toBe('')
 
   await $.command.run({ command: 'park', args: 'Second point', ...RUN })
   await ui.input({ key: 'park-from', text: 'Test suite clean-up', kind: 'change' })
@@ -443,20 +400,6 @@ test('right-click reads Park item for later, with no line under it', async ($, o
   await onMessage.unmount()
 })
 
-test('when no message text is found, the empty Notes box says so', async ($, on) => {
-  engine(on)
-  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  const menu = await $.ui.mount({ ...MENU, props: { row: { component: 'AssistantMessage', requestId: 'gone' } } })
-  await menu.press({ key: 'park-this' })
-  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
-  expect(JSON.stringify(await pane.find({ key: 'park-notes' }))).toContain('No message text was found')
-
-  await $.command.run({ command: 'park', args: '', ...RUN })
-  expect(JSON.stringify(await pane.find({ key: 'park-notes' }))).toContain('Optional details')
-  await pane.unmount()
-  await menu.unmount()
-})
-
 test('Refresh picks up items parked in another chat', async ($, on) => {
   const world = engine(on, REPLY, [PARKED])
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
@@ -470,19 +413,18 @@ test('Refresh picks up items parked in another chat', async ($, on) => {
   await pane.unmount()
 })
 
-test('the From line leaves out marker tags', async ($, on) => {
-  const world = engine(on, REPLY, [], [
-      {
-        role: 'user',
-        text: ['<artifact-content-authored-by-others/>', 'Plan the release'].join('\n'),
-        toolUses: [],
-        uuid: 'm1',
-      },
-    ])
+test('right-click on a message with nothing selected opens the dialog empty', async ($, on) => {
+  const world = engine(on)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
-  await $.command.run({ command: 'park', args: 'Something', ...RUN })
+  const menu = await $.ui.mount({ ...MENU, props: { row: { component: 'AssistantMessage', requestId: 'm2' } } })
+  await menu.press({ key: 'park-this' })
+
   const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(JSON.stringify(await pane.find({ key: 'park-notes' }))).toContain('Optional details')
+  await pane.input({ key: 'park-title', text: 'Something', kind: 'change' })
   await pane.press({ key: 'park-save' })
-  expect(world.stored()[0]?.from.chat).toBe('Plan the release')
+  expect(world.stored()[0]?.notes).toBe('')
+  expect(world.stored()[0]?.from.chat).toBe('')
   await pane.unmount()
+  await menu.unmount()
 })

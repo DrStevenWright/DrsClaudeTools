@@ -138,29 +138,10 @@ function oneLine(text: string, max: number) {
   return flat.length > max ? `${flat.slice(0, max - 1)}…` : flat
 }
 
-/** The first `count` words of the text's first line, with "…" when there was more. */
-function firstWords(text: string, count: number) {
-  const words = (text.trim().split('\n')[0] ?? '').trim().split(/\s+/).filter(Boolean)
-  const head = words.slice(0, count).join(' ')
-  return oneLine(words.length > count ? `${head}…` : head, 80)
-}
-
+/** Where a new item is parked from. From starts empty, for the person to fill in if they want. */
 async function currentChat($: $): Promise<ParkedFrom> {
-  const [sessionId, projectPath, messages] = await Promise.all([
-    $.session.id(),
-    $.session.root(),
-    $.session.messages(),
-  ])
-  const first =
-    'deny' in messages
-      ? undefined
-      : messages.map(m => (m.role === 'user' ? plainText(m.text) : '')).find(text => text !== '')
-  return {
-    sessionId,
-    projectPath,
-    project: folderName(projectPath),
-    chat: first ? firstWords(first, 10) : '',
-  }
+  const [sessionId, projectPath] = await Promise.all([$.session.id(), $.session.root()])
+  return { sessionId, projectPath, project: folderName(projectPath), chat: '' }
 }
 
 // What Claude Code wraps around a slash command or a note it adds to a message, not what anyone wrote.
@@ -221,15 +202,6 @@ function parseCandidates(text: string): ParkCandidate[] {
   }
 }
 
-/** The text of the message a right-click was on, or undefined where it can't be found. */
-async function messageText($: $, id: string) {
-  const recent = await $.session.messages({ last: 400 })
-  if ('deny' in recent) return undefined
-  const found = recent.find(m => m.uuid === id)
-  const text = found ? plainText(found.text) : ''
-  return text !== '' ? text : undefined
-}
-
 /** The last few messages as plain text, for a quick request that doesn't carry the whole chat. */
 async function recentText($: $) {
   const recent = await $.session.messages({ last: 8 })
@@ -263,7 +235,7 @@ async function askClaude($: $, title: string, notes: string) {
 }
 
 /** Opens the park dialog, with the title and notes filled in where given. */
-async function startPark($: $, title: string, notes: string, notesPlaceholder?: string) {
+async function startPark($: $, title: string, notes: string) {
   const from = await currentChat($)
   const draft: ParkDraft = {
     token: await newId($),
@@ -271,7 +243,6 @@ async function startPark($: $, title: string, notes: string, notesPlaceholder?: 
     candidates: [],
     title,
     notes,
-    notesPlaceholder,
     from,
     fromLabel: from.chat,
   }
@@ -453,12 +424,8 @@ export const register: Register = (on, options) => {
     if (!selected && !isMessage) return next(e)
 
     const { Button } = $.ui.resolve(e)
-    const park = async () => {
-      const fromRow = !selected && row ? await messageText($, row.requestId) : undefined
-      // The selection, or the message clicked on, goes into the notes.
-      const notes = (selected || fromRow?.trim() || '').slice(0, 4000)
-      await startPark($, '', notes, notes ? undefined : 'No message text was found. Add details here (optional)')
-    }
+    // The selection goes into the notes; with none, the dialog opens empty.
+    const park = () => startPark($, '', (selected ?? '').slice(0, 4000))
     return (
       <Button key="park-this" onPress={park}>
         Park item for later
@@ -552,7 +519,7 @@ export const register: Register = (on, options) => {
               <Input
                 key="park-notes"
                 rows={3}
-                placeholder={draft.notesPlaceholder ?? 'Optional details'}
+                placeholder="Optional details"
                 value={draft.notes}
                 onInput={notes => setDraft($, d => ({ ...d, notes }))}
                 onSubmit={notes => setDraft($, d => ({ ...d, notes }))}
@@ -626,8 +593,8 @@ export const register: Register = (on, options) => {
           + Park
         </Button>
         <Text> </Text>
-        <Button key="refresh" label="Show items parked or changed in other chats" onPress={() => refresh($)}>
-          ↻ Refresh
+        <Button key="refresh" plain dimColor onPress={() => refresh($)}>
+          ↻
         </Button>
       </Box>
     )
