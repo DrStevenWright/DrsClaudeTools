@@ -52,7 +52,7 @@ export type ParkedView = {
 
 declare module 'claude-code' {
   interface PluginState {
-    'parked-points': {
+    'parked-items': {
       points: Shaped<ParkedPoint[]>
       view: Shaped<ParkedView>
       /** Whether the Parked items pane is open; the reminder line hides while it is. */

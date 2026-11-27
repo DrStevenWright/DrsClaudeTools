@@ -1,10 +1,10 @@
-# Parked Points
+# Parked Items
 
 Park follow-up work from any Claude Code chat, and find it again later in one place.
 
 You might put something off because you're blocked, busy with something else, or want to think about it more.
-Parked Points doesn't care why. It keeps a single list of everything you've parked, across all your sessions and
-projects, with the chat each point came from and any notes you added.
+Parked Items doesn't care why. It keeps a single list of everything you've parked, across all your sessions and
+projects, with the chat each item came from and any notes you added.
 
 ## Using it
 
@@ -22,10 +22,10 @@ projects, with the chat each point came from and any notes you added.
   unless you press Park.
 - **`/parked`** opens the Parked items pane.
 - While anything is parked, a reminder line above the prompt shows something like **◷ 2 parked issues (3 total)**:
-  the open points from the current project, then the open points across all projects. Click it to open the pane.
+  the open items from the current project, then the open items across all projects. Click it to open the pane.
   It hides while the pane is open.
 
-The Parked items pane lists your points grouped by project, with **Open** and **Closed** tabs. For each point you can:
+The Parked items pane lists your items grouped by project, with **Open** and **Closed** tabs. For each item you can:
 
 - **Edit** its title, notes and From
 - **Close** it when it's done (it moves to Closed, and can be reopened)
@@ -48,7 +48,7 @@ request to Claude that suggests what to park, which uses your normal Claude sess
 In a terminal Claude Code session:
 
 ```
-/plugin install parked-points --marketplace DrStevenWright/DrsClaudeTools
+/plugin install parked-items --marketplace DrStevenWright/DrsClaudeTools
 ```
 
 In the desktop app: click **+** next to the prompt box, then **Plugins**, **Add marketplace** with `DrStevenWright/DrsClaudeTools`, then **Add plugin**.

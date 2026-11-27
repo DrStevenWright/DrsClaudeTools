@@ -7,7 +7,7 @@ Claude Code mods (plugins) by DrStevenWright, published as a plugin marketplace.
 | [unreal-mcp](plugins/unreal-mcp) | Connects Claude Code to the Unreal Editor's MCP server and shows whether the connection is working |
 | [prompt-drafter](plugins/prompt-drafter) | Side pane for drafting and formatting prompts before sending them to the prompt box (experimental) |
 | [git](plugins/git) | Slash commands that stage, commit, publish and tidy up git branches, following each repo's own workflow rules, and a Git tools pane with buttons for them |
-| [parked-points](plugins/parked-points) | Park follow-up work from any chat and keep it in a pane, so nothing you defer gets lost (experimental) |
+| [parked-items](plugins/parked-items) | Park follow-up work from any chat and keep it in a pane, so nothing you defer gets lost (experimental) |
 
 ## Installing a mod
 

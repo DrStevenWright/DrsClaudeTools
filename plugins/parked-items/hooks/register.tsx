@@ -9,7 +9,7 @@ import type {
   ParkedView,
 } from '../types'
 
-const PANE = 'parked-points'
+const PANE = 'parked-items'
 const TITLE = 'Parked items'
 // The list kept across sessions and projects.
 const STORE_KEY = 'points-v1'
@@ -43,14 +43,14 @@ function projectName(folder: string) {
 const PARK_TOOL = 'park'
 
 const OFFER_SECTION = {
-  id: 'parked-points:offer',
+  id: 'parked-items:offer',
   scope: 'session',
   text: [
     '# Parking follow-ups',
     'The user keeps a list of parked follow-ups: work they want to come back to later.',
     'When the conversation decides to put a specific piece of follow-up work off (because it is blocked, because the',
     'user is busy with something else, or because they want to think about it more), call',
-    `mcp__parked-points__${PARK_TOOL} with a proposed title and notes. That only opens a dialog: the user edits and`,
+    `mcp__parked-items__${PARK_TOOL} with a proposed title and notes. That only opens a dialog: the user edits and`,
     'confirms it, so you need not ask first.',
     'Offer once per follow-up. Do not offer for work you are about to do now, for vague ideas, or when the user has',
     'said they do not want it parked.',
@@ -60,11 +60,11 @@ const OFFER_SECTION = {
 // Change a tag when that value's fields change: an earlier version's value is
 // then read as the initial one.
 const points = atom(
-  { plugin: 'parked-points', key: 'points' } as const,
+  { plugin: 'parked-items', key: 'points' } as const,
   [] as ParkedPoint[],
   { shape: 'points-1' },
 )
-const isPaneOpen = atom({ plugin: 'parked-points', key: 'isPaneOpen' } as const, false)
+const isPaneOpen = atom({ plugin: 'parked-items', key: 'isPaneOpen' } as const, false)
 
 /** Opens the pane, and notes it's open so the reminder line steps aside. */
 async function openPane($: $) {
@@ -73,7 +73,7 @@ async function openPane($: $) {
 }
 
 const view = atom(
-  { plugin: 'parked-points', key: 'view' } as const,
+  { plugin: 'parked-items', key: 'view' } as const,
   { tab: 'open' } as ParkedView,
   { shape: 'view-4' },
 )
@@ -303,7 +303,7 @@ async function confirmPark($: $) {
   if (!d) return
   const title = d.title.trim()
   if (title === '') {
-    $.ui.toast('Give the point a title first.')
+    $.ui.toast('Give the item a title first.')
     return
   }
   const point: ParkedPoint = {
@@ -365,7 +365,7 @@ export const register: Register = (on, options) => {
     })
     await $.command.register({
       name: 'parked',
-      description: 'Show your parked points',
+      description: 'Show your parked items',
     })
     if (isOffering) {
       await registerParkTool($)
@@ -377,9 +377,9 @@ export const register: Register = (on, options) => {
   })
 
   // Claude's offer to park: opens the dialog filled in, for the person to confirm.
-  on('tool.call', { tool: 'mcp__parked-points__park' }, async ($, e) => {
+  on('tool.call', { tool: 'mcp__parked-items__park' }, async ($, e) => {
     // The setting was turned off after the tool was registered in this session.
-    if (!isOffering) return { deny: 'Offers to park are turned off in the Parked Points settings.' }
+    if (!isOffering) return { deny: 'Offers to park are turned off in the Parked Items settings.' }
     // A plugin tool's arguments arrive as fields of the call.
     const input = e as unknown as { title?: unknown; notes?: unknown }
     const title = typeof input.title === 'string' ? oneLine(input.title, 120) : ''
@@ -402,7 +402,7 @@ export const register: Register = (on, options) => {
   // Tells Claude when to offer.
   on('prompt.compose', async ($, e, next) => {
     const composed = await next(e)
-    if (!isOffering || !e.tools.includes(`mcp__parked-points__${PARK_TOOL}`)) return composed
+    if (!isOffering || !e.tools.includes(`mcp__parked-items__${PARK_TOOL}`)) return composed
     return { ...composed, sections: [...composed.sections, OFFER_SECTION] }
   })
 
@@ -670,7 +670,7 @@ export const register: Register = (on, options) => {
                 onPress={async () => {
                   const cur = (await read($, view)).editing
                   if (!cur || cur.title.trim() === '') {
-                    $.ui.toast('A point needs a title.')
+                    $.ui.toast('An item needs a title.')
                     return
                   }
                   await mutate($, l =>
@@ -713,7 +713,7 @@ export const register: Register = (on, options) => {
           </Text>
           {isConfirming ? (
             <Box marginTop={1}>
-              <Text>Delete this point? </Text>
+              <Text>Delete this item? </Text>
               <Button
                 key={`delete-yes-${p.id}`}
                 variant="primary"
@@ -785,7 +785,7 @@ export const register: Register = (on, options) => {
           <Text dimColor>
             {v.tab === 'open'
               ? 'Nothing parked. Type /park in a chat to park a follow-up.'
-              : 'No closed points.'}
+              : 'No closed items.'}
           </Text>
         )}
         {[...groups].map(([project, items]) => (

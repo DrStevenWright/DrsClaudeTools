@@ -2,11 +2,11 @@ import type { On } from 'claude-code'
 import { expect, mock, test } from 'claude-code/testing'
 
 const PANE = {
-  plugin: 'parked-points',
+  plugin: 'parked-items',
   component: 'Pane',
-  requestId: 'parked-points',
+  requestId: 'parked-items',
   props: {
-    title: 'Parked Points',
+    title: 'Parked Items',
     isFocused: true,
     bodyColumns: 60,
     placement: 'dock',
@@ -16,7 +16,7 @@ const PANE = {
 } as const
 
 const BAND = {
-  plugin: 'parked-points',
+  plugin: 'parked-items',
   component: 'AbovePrompt',
   requestId: 'above-prompt',
   props: {
@@ -40,7 +40,7 @@ const PARKED = {
   from: { sessionId: 'old', projectPath: '/home/someone/example-project', project: 'example-project', chat: '' },
 }
 
-const MENU = { plugin: 'parked-points', surface: 'desktop', component: 'ContextMenu' } as const
+const MENU = { plugin: 'parked-items', surface: 'desktop', component: 'ContextMenu' } as const
 
 const REPLY =
   '[{"title": "Fix the flaky login test", "notes": "It fails about one run in ten."},' +
@@ -68,7 +68,7 @@ function engine(on: On, reply = REPLY, seed: unknown[] = []) {
   const tools: string[] = []
   on('tool.register', (_, e) => {
     tools.push(e.name)
-    return { value: { tool: `mcp__parked-points__${e.name}` } }
+    return { value: { tool: `mcp__parked-items__${e.name}` } }
   })
   on('ui.open', () => {
     opened += 1
@@ -188,7 +188,7 @@ test('a point can be edited, closed, reopened and deleted', async ($, on) => {
   await ui.press({ key: 'tab-open' })
 
   await ui.press({ key: `delete-${id}` })
-  expect((await ui.find({ type: 'Text', text: /Delete this point/ }))?.text).toBe('Delete this point? ')
+  expect((await ui.find({ type: 'Text', text: /Delete this item/ }))?.text).toBe('Delete this item? ')
   await ui.press({ key: `delete-yes-${id}` })
   expect(world.stored().length).toBe(0)
   await ui.unmount()
@@ -319,7 +319,7 @@ test("Claude's offer opens the dialog filled in, and saves nothing until Park", 
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   expect(world.tools).toEqual(['park'])
   const ran = await $.tool.call({
-    tool: 'mcp__parked-points__park',
+    tool: 'mcp__parked-items__park',
     title: 'Upgrade the test runner',
     notes: 'Blocked until the new version is out.',
   })
@@ -337,7 +337,7 @@ test("Claude's offer doesn't replace a dialog that's already open", { options: {
   const world = engine(on)
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   await $.command.run({ command: 'park', args: 'Mine', ...RUN })
-  const ran = await $.tool.call({ tool: 'mcp__parked-points__park', title: 'Theirs' })
+  const ran = await $.tool.call({ tool: 'mcp__parked-items__park', title: 'Theirs' })
   expect(JSON.stringify(ran)).toContain('already open')
 
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
@@ -351,8 +351,8 @@ test('the system prompt tells Claude when to offer, while the tool is offered', 
   on('prompt.compose', () => ({ sections: [{ id: 'intro', text: 'Hello', scope: 'shared' as const }] }))
   const base = { model: 'm', promptModel: 'm', surfaces: [], outputStyle: null, traits: [] }
 
-  const withTool = await $.prompt.compose({ ...base, tools: ['mcp__parked-points__park'] })
-  expect(withTool.sections.map(s => s.id)).toEqual(['intro', 'parked-points:offer'])
+  const withTool = await $.prompt.compose({ ...base, tools: ['mcp__parked-items__park'] })
+  expect(withTool.sections.map(s => s.id)).toEqual(['intro', 'parked-items:offer'])
 
   const without = await $.prompt.compose({ ...base, tools: [] })
   expect(without.sections.map(s => s.id)).toEqual(['intro'])
@@ -365,17 +365,17 @@ test('offers are off by default: no tool, no instruction, and a stray call is re
   expect(world.tools).toEqual([])
 
   const base = { model: 'm', promptModel: 'm', surfaces: [], outputStyle: null, traits: [] }
-  const composed = await $.prompt.compose({ ...base, tools: ['mcp__parked-points__park'] })
+  const composed = await $.prompt.compose({ ...base, tools: ['mcp__parked-items__park'] })
   expect(composed.sections.map(s => s.id)).toEqual(['intro'])
 
-  const ran = await $.tool.call({ tool: 'mcp__parked-points__park', title: 'Anything' })
+  const ran = await $.tool.call({ tool: 'mcp__parked-items__park', title: 'Anything' })
   expect(JSON.stringify(ran)).toContain('turned off')
   expect(world.stored().length).toBe(0)
 })
 
 test('the pane is called Parked items and shows the version at the bottom', async ($, on) => {
   engine(on)
-  on('fs.read', () => ({ value: JSON.stringify({ name: 'parked-points', version: '0.1.0' }) }))
+  on('fs.read', () => ({ value: JSON.stringify({ name: 'parked-items', version: '0.1.0' }) }))
   await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
   const ui = await $.ui.mount({ ...PANE, surface: 'desktop' })
   expect((await ui.find({ type: 'Text', text: /^Parked items v\d+\.\d+\.\d+$/ }))?.text).toBe('Parked items v0.1.0')
