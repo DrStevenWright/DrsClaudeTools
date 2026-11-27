@@ -21,7 +21,7 @@ The following commands obey the target repo's own workflow rules, on top of a se
 | `/git:commit-staged [repo] [-- hint]` | Commits only those changes that are already staged. |
 | `/git:publish [repo] [-- hint]` | Stages, commits, and pushes all changes, then opens or updates a PR. (New PRs will be automatically opened in the browser). |
 | `/git:publish-committed [repo] [-- hint]` | Pushes only changes that have already been committed, then opens or updates a PR. (New PRs will be automatically opened in the browser). |
-| `/git:merged [repo] [branch]` | Call this after a PR has been merged, to switch back to the default branch (or a pre-split branch), pull latest and delete the merged branch. For submodules, it then offers to update the pointer in the host repo. |
+| `/git:merged [repo] [branch]` | Call this after a PR has been merged, to switch back to the default branch (or a pre-split branch), pull latest and delete the merged branch. Uncommitted edits on the branch can be carried over, stashed or dropped. For submodules, it then offers to update the pointer in the host repo. |
 | `/git:split-commits [repo] [-- hint]` | Suggests options for splitting off smaller sets of changes into their own branch. The remaining changes will be temporarily parked before switching to the new branch. |
 | `/git:split-resume [repo]` | Returns from a split branch to the previous one and restores the parked edits. (The `/git:merged` command does this automatically.) |
 | `/git:prune [repo]` | Deletes any local branches whose PRs have been merged (including those that used a squash merge). |
@@ -45,10 +45,12 @@ Sometimes local changes can end up encompassing far more than was originally int
 
 Then you are free to work in the new branch as normal. There are then two ways to return to the previous branch:
 
-- `/git:merged`: Call this after the split branch has been merged. Instead of switching back to the default branch, it will return to the previous branch, update it and restore the parked edits. Any uncommitted edits on the split branch come back with you.
-- `/git:split-resume`: If you choose not to merge the split branch just yet (or at all), then this command will return to the previous branch and restore the parked edits without deleting the split branch. Any uncommitted edits on the split branch come back with you, so commit any you want to keep on it first.
+- `/git:merged`: Call this after the split branch has been merged. Instead of switching back to the default branch, it will return to the previous branch, update it and restore the parked edits. You'll be asked whether to carry any uncommitted edits on the split branch back with you, stash them or drop them.
+- `/git:split-resume`: If you choose not to merge the split branch just yet (or at all), then this command will return to the previous branch and restore the parked edits without deleting the split branch. Again, you'll be asked whether to carry, stash or drop any uncommitted edits, so commit any you want to keep on the split branch first.
 
 Every `/git:` command will refuse to work on a parked branch, and a session start will inform you if there are any parked edits to be resolved. If you switch branches manually, you can call `/git:split-resume` to restore the parked edits. Until then, `refs/drs-split/<branch>` keeps a backup of every edit as it was before the split.
+
+Stashed edits are kept in the stash as `git: stashed from <branch>`, so `git stash pop` can bring them back. Dropped edits are discarded for good.
 
 ## Git tools pane
 
