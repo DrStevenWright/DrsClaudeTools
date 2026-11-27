@@ -4,13 +4,13 @@ Claude Code allows us to do so much more, which usually entails working on sever
 
 The DRS git plugin seeks to alleviate some of that pain, by applying a little AI-assistance to automatically work out what combination of repo, branch and changes are being targeted, and what operations are needed to get them published, while following the project's conventions for commits, pull requests and merging.
 
-This plugin contains a set of AI-assisted slash commands for some common Git operations, accessible via prompt, context menu or a dedicated Git tools GUI.
+This plugin contains a set of AI-assisted slash commands for some common Git operations, accessible via prompt or a dedicated Git tools GUI.
 
 ![The Git tools pane, showing a host repo and two submodules, each with its branch, changes and buttons](docs/git-tools-pane.png)
 
 ## Commands
 
-> **The `git:` prefix is optional** unless another plugin, skill or project command uses the same name for a command. For example, `/stage` runs `/git:stage` if nothing else is called `stage`. Use the full name to be sure, and when the typeahead lists more than one match. The pane and the right-click menu always use the full name.
+> **The `git:` prefix is optional** unless another plugin, skill or project command uses the same name for a command. For example, `/stage` runs `/git:stage` if nothing else is called `stage`. Use the full name to be sure, and when the typeahead lists more than one match. The pane always uses the full name.
 
 The following commands obey the target repo's own workflow rules, on top of a set of generic defaults.
 
@@ -26,7 +26,7 @@ The following commands obey the target repo's own workflow rules, on top of a se
 | `/git:split-resume [repo]` | Returns from a split branch to the previous one and restores the parked edits. (The `/git:merged` command does this automatically.) |
 | `/git:prune [repo]` | Deletes any local branches whose PRs have been merged (including those that used a squash merge). |
 
-Claude never runs these on its own. They run only when you enter them into a prompt, select them from the context menu or press a button on the [Git tools pane](#git-tools-pane).
+Claude never runs these on its own. They run only when you enter them into a prompt or press a button on the [Git tools pane](#git-tools-pane).
 
 ## Repository selection
 
@@ -59,10 +59,11 @@ Stashed edits are kept in the stash as `git: stashed from <branch>`, so `git sta
 - **Status line for each repository**, with the branch name (or `detached`), how many files have changed, whether the only change is a submodule pointer, and how many commits are still to publish. A split branch is tagged `split from <branch>`. Underneath, a work branch with a PR gets a link to it and the PR's state (open, merged or closed).
 - **Warning** for a submodule pointer whose commit isn't on that submodule's default branch, naming the branch it is on instead. A submodule's default branch is the one `.gitmodules` tracks (`branch = …`), or else the remote's default branch as pointed to by `origin/HEAD`.
 - **Buttons** for Stage, Commit, Publish, Merged, Split and Resume split. Ones that don't apply are greyed out, and pressing the button will explain why. On a branch with parked edits, only the Resume split button applies.
+- **Other commands**, a row under the repos with Commit staged, Publish committed and Prune merged branches. These run for the session as a whole, so the command chooses the repo itself (asking if more than one applies).
 
-Each button runs its `/git:` command for that repo, as if you'd typed it into the prompt. The pane refreshes after every turn and every 15 seconds while it is shown.
+Each button runs its `/git:` command as if you'd typed it into the prompt; the per-repo buttons name that repo. The pane refreshes after every turn and every 15 seconds while it is shown.
 
-In Claude's desktop app, the right-click menu provides an option to open the tools pane ("Open Git tools"). If the pane is currently closed, then it lists every available command along with a one-line description of what it does. While the pane is open, the menu includes only the commands that the pane has no button for (e.g. `/git:prune`).
+In Claude's desktop app, the right-click menu has a single Git row: "Open Git tools" while the pane is closed, "Close Git tools" while it is shown.
 
 ## Workflow rules
 

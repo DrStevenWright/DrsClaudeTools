@@ -1,7 +1,8 @@
 // The git pane: one line per repo (the session's repo and its submodules) with
-// buttons that run the /git: commands, plus the same commands on the desktop
-// app's right-click menu. Every button runs a /git: command as if typed, so the
-// command's own rules and judgement apply; git itself only feeds the display.
+// buttons that run the /git: commands, a row of commands for the whole
+// session, and a desktop right-click menu row that opens or closes the pane.
+// Every button runs a /git: command as if typed, so the command's own rules
+// and judgement apply; git itself only feeds the display.
 
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
@@ -280,23 +281,12 @@ function unavailable(repo: GitRepo, command: string): string | undefined {
   }
 }
 
-// Right-click menu rows, in order: command, label, the dim line after it, and
-// whether the row stays while the pane is shown (the pane has no button for it).
-const MENU: readonly (readonly [string, string, string, boolean])[] = [
-  ['git:stage', 'Stage', 'Stages all local edits', false],
-  ['git:commit', 'Commit', 'Stages and commits all local edits', false],
-  ['git:commit-staged', 'Commit staged', 'Commits staged local edits', true],
-  ['git:publish', 'Publish', 'Stages, commits and pushes all local edits, then opens or updates a PR', false],
-  [
-    'git:publish-committed',
-    'Publish committed',
-    'Pushes existing commits, then opens or updates a PR (ignoring uncommitted edits)',
-    true,
-  ],
-  ['git:merged', 'Merged', 'Syncs repo and deletes branch following a PR merge', false],
-  ['git:split-commits', 'Split', 'Suggests and splits subset of local edits into its own branch', false],
-  ['git:split-resume', 'Resume split', 'Returns to pre-split branch and restores parked edits', false],
-  ['git:prune', 'Prune merged branches', 'Deletes local branches whose PRs have merged', true],
+// Commands with no per-repo button, in a row of their own under the repos.
+// Each runs for the session as a whole, so the command picks the repo.
+const EXTRA: readonly (readonly [string, string])[] = [
+  ['git:commit-staged', 'Commit staged'],
+  ['git:publish-committed', 'Publish committed'],
+  ['git:prune', 'Prune merged branches'],
 ]
 
 const MAIN: readonly (readonly [string, string])[] = [
@@ -391,31 +381,35 @@ export const register: Register = on => {
             </Box>
           </Box>
         ))}
+        <Box flexDirection="column">
+          <Text bold>Other commands</Text>
+          <Box flexDirection="row" flexWrap="wrap" gap={1} marginTop="sm">
+            {EXTRA.map(([command, label]) => (
+              <Button key={command} onPress={() => runCommand($, command, '')}>
+                {label}
+              </Button>
+            ))}
+          </Box>
+        </Box>
         {running !== '' && <Text dimColor>Running {running}</Text>}
         {v !== undefined && <Text dimColor>git v{v}</Text>}
       </Box>
     )
   })
 
-  // Right-click menu: every command while the pane isn't on screen; while it
-  // is, only the ones the pane has no button for. The app has no submenus, so
-  // each row keeps a `Git:` prefix to group them.
+  // Right-click menu: only the row that opens or closes the pane; every
+  // command is a button on the pane itself.
   on('ui.render', { component: 'ContextMenu' }, async ($, e) => {
-    const { Box, Button, Text } = $.ui.resolve(e)
-    const isShown = await isPaneShown($)
-    const rows = MENU.filter(([, , , isExtra]) => !isShown || isExtra)
+    const { Button } = $.ui.resolve(e)
 
-    return (
-      <Box flexDirection="column">
-        <Button key="git:pane" label="Open Git tools" onPress={() => openPane($)}>
-          Open Git tools <Text dimColor>· Git commands for each repo</Text>
-        </Button>
-        {rows.map(([command, label, description]) => (
-          <Button key={command} label={`Git: ${label}`} onPress={() => runCommand($, command, '')}>
-            Git: {label} <Text dimColor>· {description}</Text>
-          </Button>
-        ))}
-      </Box>
+    return (await isPaneShown($)) ? (
+      <Button key="git:pane" label="Close Git tools" onPress={() => $.ui.close({ id: PANE })}>
+        Close Git tools
+      </Button>
+    ) : (
+      <Button key="git:pane" label="Open Git tools" onPress={() => openPane($)}>
+        Open Git tools
+      </Button>
     )
   })
 }
