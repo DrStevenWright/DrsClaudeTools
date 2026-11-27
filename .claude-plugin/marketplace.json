@@ -17,6 +17,11 @@
       "name": "git",
       "source": "./plugins/git",
       "description": "Slash commands that stage, commit, publish and tidy up git branches, following each repo's own workflow rules, and a Git tools pane with buttons for them"
+    },
+    {
+      "name": "parked-items",
+      "source": "./plugins/parked-items",
+      "description": "Park follow-up work from any chat and keep it in a pane, so nothing you defer gets lost."
     }
   ]
 }
