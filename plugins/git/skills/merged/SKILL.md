@@ -19,12 +19,12 @@ Arguments: `$ARGUMENTS`. A token that isn't a repo is the branch name `B`; if no
 1. Read `${CLAUDE_PLUGIN_ROOT}/shared/procedure.md` and follow its steps 1 to 4. A candidate repo is one whose current branch (or `B`) is not its default branch. Skip the parked-edits stop in step 2 when `B` is a split branch (step 3).
 2. If `B` is the default branch, stop: "<repo> is already on <D>. Name the branch: `/git:merged <repo> <branch>`."
 3. **Split branch.** If `git -C "<R>" config --get branch.<B>.splitFrom` prints a branch `F`, `B` came from `/git:split-commits`:
-   1. If HEAD is on `B` and the repo has uncommitted changes, stop and list them. (On `F`, uncommitted changes are fine.) If HEAD is on neither, stop: "Switch to <B> or <F> first."
+   1. If HEAD is on neither `B` nor `F`, stop: "Switch to <B> or <F> first." Uncommitted changes are fine on either: on `B` they come back to `F`.
    2. Check that `B` has merged, as in step 5.
    3. Update the local default branch without switching to it: `git -C "<R>" fetch origin <D>:<D>`. If it isn't a fast-forward, say so and carry on.
-   4. Run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/split.sh" return "<R>" <B> <D>`. It switches to `F`, restores the parked edits and merges `origin/<D>` into `F`, holding the edits aside during the merge. If it stops, report its message and stop.
+   4. Run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/split.sh" return "<R>" <B> <D>`. It switches to `F`, restores the parked edits and merges `origin/<D>` into `F`, holding the edits aside during the merge, then restores any uncommitted changes carried from `B`. If it stops, report its message and stop.
    5. Delete `B` as in step 7. Skip step 8: the repo is back on `F`, so any host pointer waits for `F`.
-   6. Report in one line: `<repo> · deleted <B> · back on <F> · <the script's "restored" line, without the prefix> · merged origin/<D>` (or `· already up to date` if it printed that). Then stop.
+   6. Report in one line: `<repo> · deleted <B> · back on <F> · <the script's "restored" line, without the prefix> · merged origin/<D>` (or `· already up to date` if it printed that), adding `· carried changes from <B>` if it printed `carried: yes`. Then stop.
 4. If the repo has uncommitted changes (`git -C "<R>" status --porcelain --ignore-submodules=dirty` isn't empty), stop and list them.
 5. Check that `B` has merged (procedure step 7). If it hasn't, stop and say why: no merged PR, or commits added after the merge.
 6. `git -C "<R>" switch <D>`, then `git -C "<R>" pull --ff-only`. If the pull fails, stop and report.
