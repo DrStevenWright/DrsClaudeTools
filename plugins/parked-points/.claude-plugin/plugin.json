@@ -1,0 +1,16 @@
+{
+  "name": "parked-points",
+  "version": "0.1.0",
+  "description": "Park follow-up work from any chat and keep it in a pane, so nothing you defer gets lost.",
+  "author": { "name": "DrStevenWright" },
+  "license": "MIT",
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "offerToPark": {
+      "type": "boolean",
+      "title": "Claude offers to park follow-ups",
+      "description": "When on, Claude opens the park dialog itself when a chat puts some work off. Adds about 300 tokens to each request, mostly served from the prompt cache.",
+      "default": false
+    }
+  }
+}
