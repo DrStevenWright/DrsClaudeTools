@@ -80,8 +80,29 @@ function engine(on: On, reply = REPLY, seed: unknown[] = []) {
   on('session.root', () => ({ value: '/home/someone/example-project' }))
   on('session.messages', () => ({
     value: [
+      // A slash command the user ran: only Claude Code's wrappers, nothing they wrote.
+      {
+        role: 'user',
+        text: [
+          '<command-name>/reload-plugins</command-name>',
+          '<command-message>reload-plugins</command-message>',
+          '<command-args></command-args>',
+        ].join('\n'),
+        toolUses: [],
+        uuid: 'm0',
+      },
       { role: 'user', text: 'Help me tidy up the test suite', toolUses: [], uuid: 'm1' },
       { role: 'assistant', text: 'Later we should also split the slow tests out.', toolUses: [], uuid: 'm2' },
+      {
+        role: 'user',
+        text: [
+          '<command-name>/reload-plugins</command-name>',
+          '<command-args></command-args>',
+          'And rename the fixtures folder.',
+        ].join('\n'),
+        toolUses: [],
+        uuid: 'm3',
+      },
     ],
   }))
   on('model.complete', (_, e) => {
@@ -242,6 +263,35 @@ test('right-click on a message puts the message in the notes', async ($, on) => 
   await pane.input({ key: 'park-title', text: 'Split the slow tests', kind: 'change' })
   await pane.press({ key: 'park-save' })
   expect(world.stored()[0]?.notes).toBe('Later we should also split the slow tests out.')
+  await pane.unmount()
+  await menu.unmount()
+})
+
+test("right-click on a message leaves out Claude Code's command wrappers", async ($, on) => {
+  const world = engine(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const menu = await $.ui.mount({ ...MENU, props: { row: { component: 'UserMessage', requestId: 'm3' } } })
+  await menu.press({ key: 'park-this' })
+
+  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await pane.input({ key: 'park-title', text: 'Rename fixtures', kind: 'change' })
+  await pane.press({ key: 'park-save' })
+  expect(world.stored()[0]?.notes).toBe('And rename the fixtures folder.')
+  expect(world.stored()[0]?.from.chat).toBe('Help me tidy up the test suite')
+  await pane.unmount()
+  await menu.unmount()
+})
+
+test('right-click on a bare slash command leaves the notes empty', async ($, on) => {
+  const world = engine(on)
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const menu = await $.ui.mount({ ...MENU, props: { row: { component: 'UserMessage', requestId: 'm0' } } })
+  await menu.press({ key: 'park-this' })
+
+  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await pane.input({ key: 'park-title', text: 'Something', kind: 'change' })
+  await pane.press({ key: 'park-save' })
+  expect(world.stored()[0]?.notes).toBe('')
   await pane.unmount()
   await menu.unmount()
 })

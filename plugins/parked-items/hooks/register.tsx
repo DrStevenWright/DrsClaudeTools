@@ -151,13 +151,22 @@ async function currentChat($: $): Promise<ParkedFrom> {
   const first =
     'deny' in messages
       ? undefined
-      : messages.find(m => m.role === 'user' && m.text.trim() !== '')
+      : messages.map(m => (m.role === 'user' ? plainText(m.text) : '')).find(text => text !== '')
   return {
     sessionId,
     projectPath,
     project: folderName(projectPath),
-    chat: first ? firstWords(first.text, 10) : '',
+    chat: first ? firstWords(first, 10) : '',
   }
+}
+
+// What Claude Code wraps around a slash command or a note it adds to a message, not what anyone wrote.
+const WRAPPERS =
+  /<(command-name|command-message|command-args|local-command-stdout|local-command-stderr|local-command-caveat|system-reminder)>[\s\S]*?<\/\1>/g
+
+/** A message's text without the command and system wrappers Claude Code adds. */
+function plainText(text: string) {
+  return text.replace(WRAPPERS, '').trim()
 }
 
 // ---------- asking Claude what to park ----------
@@ -211,7 +220,8 @@ async function messageText($: $, id: string) {
   const recent = await $.session.messages({ last: 400 })
   if ('deny' in recent) return undefined
   const found = recent.find(m => m.uuid === id)
-  return found && found.text.trim() !== '' ? found.text : undefined
+  const text = found ? plainText(found.text) : ''
+  return text !== '' ? text : undefined
 }
 
 /** The last few messages as plain text, for a quick request that doesn't carry the whole chat. */
@@ -219,7 +229,8 @@ async function recentText($: $) {
   const recent = await $.session.messages({ last: 8 })
   if ('deny' in recent) return ''
   return recent
-    .filter(m => m.text.trim() !== '')
+    .map(m => ({ role: m.role, text: plainText(m.text) }))
+    .filter(m => m.text !== '')
     .map(m => `${m.role === 'user' ? 'User' : 'Claude'}: ${m.text.slice(0, 1500)}`)
     .join('\n\n')
 }
