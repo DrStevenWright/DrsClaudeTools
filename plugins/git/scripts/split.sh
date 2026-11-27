@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Helper for /git:split-commits, /git:split-resume and /git:merged.
 #
+# Leaving a branch with uncommitted changes takes a mode: "carry" brings them
+# along, "stash" sets them aside in a stash entry (git stash pop gets them
+# back), "drop" discards them. With changes and no mode, the command stops.
+#
 # A split moves some of the uncommitted edits on branch P to a new branch B
 # made from origin/<D>. The edits that stay behind are "parked" in one commit
 # at the tip of P. Git config records the link:
@@ -23,6 +27,28 @@ workdir() {
   mkdir -p "$gd/drs-split"; echo "$gd/drs-split"
 }
 dirty() { [ -n "$(git -C "$R" status --porcelain --ignore-submodules=dirty)" ]; }
+
+# set_aside <branch> <mode>: before leaving <branch>, stashes its uncommitted
+# changes. Sets carried=yes for "carry"; leaves the stash in place for
+# "stash"; discards it for "drop". Ignored files are never touched.
+set_aside() {
+  local from=$1 mode=$2
+  carried=no
+  dirty || return 0
+  case "$mode" in
+    carry)
+      git -C "$R" stash push -q -u -m "git: carried from $from"
+      carried=yes ;;
+    stash)
+      git -C "$R" stash push -q -u -m "git: stashed from $from"
+      echo "stashed: kept in the stash as \"git: stashed from $from\"" ;;
+    drop)
+      git -C "$R" stash push -q -u -m "git: dropped from $from"
+      git -C "$R" stash drop -q
+      echo "dropped: yes" ;;
+    *) die "$from has uncommitted changes; say carry, stash or drop" ;;
+  esac
+}
 counts() {
   # Counts the working tree's changes against HEAD, by kind.
   git -C "$R" status --porcelain --ignore-submodules=dirty | awk '
@@ -189,11 +215,11 @@ split)
   echo "parked: $parked"
   ;;
 
-# resume <R>: from a split branch, returns to its previous branch and restores
-# the parked edits. Uncommitted changes on the split branch come along. On a
-# parked branch itself, just restores.
+# resume <R> [carry|stash|drop]: from a split branch, returns to its previous branch
+# and restores the parked edits. Uncommitted changes on the split branch are
+# carried or dropped. On a parked branch itself, just restores.
 resume)
-  R=$1
+  R=$1; MODE=${2:-}
   B=$(current); P=$(cfg "branch.$B.splitFrom")
   if [ -z "$P" ]; then
     [ -n "$(cfg "branch.$B.splitPark")" ] || die "$B isn't a split branch and has nothing parked"
@@ -201,11 +227,7 @@ resume)
   fi
   git -C "$R" show-ref --verify --quiet "refs/heads/$P" || die "$P no longer exists"
   other_park "$P" "$B"
-  carried=no
-  if dirty; then
-    git -C "$R" stash push -q -u -m "split-resume: carried from $B"
-    carried=yes
-  fi
+  set_aside "$B" "$MODE"
   git -C "$R" switch -q "$P"
   if [ $carried = yes ]; then
     # Pop onto the clean park commit first, so the parked edits can't block it.
@@ -219,21 +241,19 @@ resume)
   unpark "$B"
   ;;
 
-# return <R> <B> <D>: after B has merged, returns to its previous branch,
-# restores the parked edits and merges origin/<D> into it. Uncommitted changes
-# on B come along, restored after the merge, since they build on B's work.
+# return <R> <B> <D> [carry|stash|drop]: after B has merged, returns to its previous
+# branch, restores the parked edits and merges origin/<D> into it. Uncommitted
+# changes on B are carried (restored after the merge, since they build on B's
+# work), stashed or dropped.
 return)
-  R=$1; B=$2; D=$3
+  R=$1; B=$2; D=$3; MODE=${4:-}
   P=$(cfg "branch.$B.splitFrom"); [ -n "$P" ] || die "$B isn't a split branch"
   git -C "$R" show-ref --verify --quiet "refs/heads/$P" || die "$P no longer exists"
   [ "$(current)" = "$B" ] || [ "$(current)" = "$P" ] || die "switch to $B or $P first"
   other_park "$P" "$B"
   carried=no
   if [ "$(current)" = "$B" ]; then
-    if dirty; then
-      git -C "$R" stash push -q -u -m "split: carried from $B"
-      carried=yes
-    fi
+    set_aside "$B" "$MODE"
     git -C "$R" switch -q "$P"
   fi
   [ "$(current)" = "$P" ] || die "switch to $B or $P first"
@@ -265,6 +285,28 @@ return)
   fi
   ;;
 
+# leave <R> <B> <D> [carry|stash|drop]: after B (not a split branch) has merged,
+# switches from it to <D> and fast-forwards <D>. Uncommitted changes on B are
+# carried (restored after the pull), stashed or dropped. Deleting B is the caller's.
+leave)
+  R=$1; B=$2; D=$3; MODE=${4:-}
+  [ "$(current)" = "$B" ] || die "not on $B"
+  set_aside "$B" "$MODE"
+  git -C "$R" switch -q "$D"
+  if ! git -C "$R" pull -q --ff-only; then
+    if [ $carried = yes ]; then
+      git -C "$R" stash pop -q || die "pulling $D failed, and your changes from $B conflict with $D. Resolve the files marked; the stash is kept until you drop it."
+      die "pulling $D failed; your changes from $B are back on $D."
+    fi
+    die "pulling $D failed."
+  fi
+  if [ $carried = yes ]; then
+    git -C "$R" stash pop -q || die "your changes from $B conflict with $D. Resolve the files marked; the stash is kept until you drop it."
+    echo "carried: yes"
+  fi
+  echo "on: $D at $(git -C "$R" rev-parse --short HEAD)"
+  ;;
+
 # state <dir>: one line per repo (the one at <dir> and its submodules) that
 # has parked edits or is on a split branch. Never fails.
 state)
@@ -288,5 +330,5 @@ state)
   exit 0
   ;;
 
-*) die "usage: split.sh prepare|check|split|resume|return|state ..." ;;
+*) die "usage: split.sh prepare|check|split|resume|return|leave|state ..." ;;
 esac

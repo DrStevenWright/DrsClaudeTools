@@ -108,3 +108,13 @@ Keep the whole run terse: no commentary between tool calls, and no description o
 - Add a short trailing note only for something the user must know: changes left out (`· 3 unstaged left out`) or the missing-rules note from step 3.
 - On a split branch, add `· split from <branch>`.
 - A stop is one line too: what stopped it and the next step.
+
+## 10. Carry, stash or drop
+
+When a command leaves a branch `B` that has uncommitted changes (`git -C "<R>" status --porcelain --ignore-submodules=dirty` isn't empty), ask with AskUserQuestion: "<n> uncommitted changes on <B>. What should happen to them?" Options:
+
+- "Carry" (recommended), description "Bring them to <the branch you're going to>": mode `carry`.
+- "Stash", description "Set them aside in the stash, so `git stash pop` can get them back": mode `stash`.
+- "Drop", description "Discard them. This can't be undone": mode `drop`.
+
+Pass the mode to the script the command names. With no uncommitted changes, ask nothing and pass no mode. End the report with `· carried changes from <B>` if the script prints `carried: yes`, `· stashed changes from <B>` if it prints a `stashed:` line, or `· dropped changes from <B>` if it prints `dropped: yes`.
