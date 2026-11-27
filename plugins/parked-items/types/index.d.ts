@@ -34,11 +34,9 @@ export type ParkDraft = {
   candidates: ParkCandidate[]
   title: string
   notes: string
-  /** What the empty Notes box says; absent for the usual "Optional details". */
-  notesPlaceholder?: string
   /** The notes as a suggestion last filled them, so the next suggestion picked may replace them. */
   suggestedNotes?: string
-  /** The From box: where the point came from, in the person's words. Starts as the chat's first words. */
+  /** The From box: where the point came from, in the person's words. Starts empty. */
   fromLabel: string
   from: ParkedFrom
 }
