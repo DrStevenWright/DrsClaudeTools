@@ -54,7 +54,7 @@ Every `/git:` command will refuse to work on a parked branch, and a session star
 
 `/git-pane` opens the Git tools pane beside the chat. It shows the session's repository and each of its submodules, along with:
 
-- **Status line for each repository**, with the branch name (or `detached`), how many files have changed, whether the only change is a submodule pointer, and how many commits are still to publish. A split branch is tagged `split from <branch>`.
+- **Status line for each repository**, with the branch name (or `detached`), how many files have changed, whether the only change is a submodule pointer, and how many commits are still to publish. A split branch is tagged `split from <branch>`. Underneath, a work branch with a PR gets a link to it and the PR's state (open, merged or closed).
 - **Warning** for a submodule pointer whose commit isn't on that submodule's default branch, naming the branch it is on instead. A submodule's default branch is the one `.gitmodules` tracks (`branch = …`), or else the remote's default branch as pointed to by `origin/HEAD`.
 - **Buttons** for Stage, Commit, Publish, Merged, Split and Resume split. Ones that don't apply are greyed out, and pressing the button will explain why. On a branch with parked edits, only the Resume split button applies.
 

@@ -6,14 +6,16 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { GitRepo } from '../types'
+import type { GitPr, GitRepo } from '../types'
 
 const PANE = 'git'
 const TITLE = 'Git tools'
 const REFRESH_MS = 15000
+// How long a branch's PR lookup is reused before gh is asked again.
+const PR_TTL_MS = 60000
 
 const repos = atom({ plugin: 'git', key: 'repos' } as const, [] as GitRepo[], {
-  shape: 'repos-1',
+  shape: 'repos-2',
 })
 const busy = atom({ plugin: 'git', key: 'busy' } as const, '')
 const problem = atom({ plugin: 'git', key: 'problem' } as const, '')
@@ -50,6 +52,37 @@ async function git($: $, args: string[], cwd?: string) {
   } catch {
     return { isOk: false, out: '' }
   }
+}
+
+// The newest PR whose head is the branch, in any state, from the repo's own
+// remote. Null when there is none, or gh isn't installed or signed in.
+const prCache = new Map<string, { pr: GitPr | null; at: number }>()
+
+async function branchPr($: $, path: string, branch: string): Promise<GitPr | null> {
+  const key = `${path}
+${branch}`
+  const cached = prCache.get(key)
+  if (cached !== undefined && Date.now() - cached.at < PR_TTL_MS) {
+    return cached.pr
+  }
+  let pr: GitPr | null = null
+  try {
+    const run = await $.process.run(
+      ['gh', 'pr', 'list', '--head', branch, '--state', 'all', '--limit', '1', '--json', 'number,url,state'],
+      { cwd: path, timeoutMs: 15000 },
+    )
+    if (run.exitCode === 0) {
+      const found = (JSON.parse(run.stdout) as { number: number; url: string; state: string }[])[0]
+      if (found !== undefined) {
+        pr = { number: found.number, url: found.url, state: found.state.toLowerCase() }
+      }
+    }
+  } catch {
+    // Leave it out: the pane works the same without it.
+  }
+  prCache.set(key, { pr, at: Date.now() })
+
+  return pr
 }
 
 const lastSegment = (path: string) => path.split('/').filter(Boolean).pop() ?? path
@@ -99,7 +132,8 @@ async function readRepo($: $, path: string, arg: string, name: string, tracked?:
     .filter(fields => fields[0] === '1' && (fields[2] ?? '').startsWith('S'))
     .map(fields => fields.slice(8).join(' '))
 
-  const [ahead, park, from] = await Promise.all([
+  const onWorkBranch = branch !== null && branch !== defaultBranch
+  const [ahead, park, from, pr] = await Promise.all([
     branch === null
       ? Promise.resolve({ isOk: false, out: '0' })
       : git($, ['rev-list', '--count', `origin/${defaultBranch}..HEAD`], path),
@@ -109,6 +143,7 @@ async function readRepo($: $, path: string, arg: string, name: string, tracked?:
     branch === null
       ? Promise.resolve({ isOk: false, out: '' })
       : git($, ['config', '--get', `branch.${branch}.splitFrom`], path),
+    onWorkBranch ? branchPr($, path, branch) : Promise.resolve(null),
   ])
 
   const warnings: string[] = []
@@ -130,6 +165,7 @@ async function readRepo($: $, path: string, arg: string, name: string, tracked?:
     ahead: ahead.isOk ? Number(ahead.out) || 0 : 0,
     isParked: park.isOk && park.out !== '',
     splitFrom: from.isOk && from.out !== '' ? from.out : null,
+    pr,
     warnings,
   }
 }
@@ -306,7 +342,7 @@ export const register: Register = on => {
   })
 
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Button, Text } = $.ui.resolve(e)
+    const { Box, Button, Link, Text } = $.ui.resolve(e)
     const list = await read($, repos)
     const running = await read($, busy)
     const issue = await read($, problem)
@@ -340,6 +376,12 @@ export const register: Register = on => {
               <Text color={repo.changed > 0 || repo.ahead > 0 ? 'warning' : 'subtle'}>{summary(repo)}</Text>
               {repo.splitFrom !== null && <Text dimColor> · split from {repo.splitFrom}</Text>}
             </Text>
+            {repo.pr !== null && (
+              <Text>
+                <Link href={repo.pr.url}>PR #{repo.pr.number}</Link>
+                <Text color={repo.pr.state === 'open' ? 'success' : 'subtle'}> · {repo.pr.state}</Text>
+              </Text>
+            )}
             {repo.isParked && <Text color="warning">edits parked by a split</Text>}
             {repo.warnings.map(warning => (
               <Text color="warning">{warning}</Text>

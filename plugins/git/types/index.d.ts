@@ -1,5 +1,13 @@
 // What the git pane keeps in the session's state.
 
+/** A branch's pull request on GitHub. */
+export type GitPr = {
+  number: number
+  url: string
+  /** `open`, `merged` or `closed`. */
+  state: string
+}
+
 export type GitRepo = {
   /** The repo's top-level path, as git prints it. */
   path: string
@@ -19,6 +27,8 @@ export type GitRepo = {
   isParked: boolean
   /** The branch a split branch came from; null otherwise. */
   splitFrom: string | null
+  /** The newest PR from the branch, in any state; null on the default branch or with none. */
+  pr: GitPr | null
   warnings: string[]
 }
 
