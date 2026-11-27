@@ -45,8 +45,8 @@ Sometimes local changes can end up encompassing far more than was originally int
 
 Then you are free to work in the new branch as normal. There are then two ways to return to the previous branch:
 
-- `/git:merged`: Call this after the split branch has been merged. Instead of switching back to the default branch, it will return to the previous branch, update it and restore the parked edits.
-- `/git:split-resume`: If you choose not to merge the split branch just yet (or at all), then this command will return to the previous branch and restore the parked edits without deleting the split branch.
+- `/git:merged`: Call this after the split branch has been merged. Instead of switching back to the default branch, it will return to the previous branch, update it and restore the parked edits. Any uncommitted edits on the split branch come back with you.
+- `/git:split-resume`: If you choose not to merge the split branch just yet (or at all), then this command will return to the previous branch and restore the parked edits without deleting the split branch. Any uncommitted edits on the split branch come back with you, so commit any you want to keep on it first.
 
 Every `/git:` command will refuse to work on a parked branch, and a session start will inform you if there are any parked edits to be resolved. If you switch branches manually, you can call `/git:split-resume` to restore the parked edits. Until then, `refs/drs-split/<branch>` keeps a backup of every edit as it was before the split.
 

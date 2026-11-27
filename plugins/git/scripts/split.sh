@@ -35,9 +35,20 @@ counts() {
     }'
 }
 
-# Restores the parked edits on the current branch as uncommitted changes.
+# Stops if <P>'s parked edits belong to a later split than <B>'s.
+other_park() {
+  local P=$1 B=$2 to
+  [ -n "$(cfg "branch.$P.splitPark")" ] || return 0
+  to=$(cfg "branch.$P.splitTo")
+  [ "$to" = "$B" ] ||
+    die "$P has edits parked by its split to $to. Return from $to first (/git:split-resume or /git:merged there), then try again."
+}
+
+# Restores the parked edits on the current branch as uncommitted changes. With
+# a split branch named, its link and backup are cleared only if they're that
+# split's.
 unpark() {
-  local P park; P=$(current); park=$(cfg "branch.$P.splitPark")
+  local P park want=${1:-}; P=$(current); park=$(cfg "branch.$P.splitPark")
   if [ -n "$park" ]; then
     [ "$(git -C "$R" rev-parse HEAD)" = "$park" ] ||
       die "$P has commits on top of its park commit ${park:0:7}. Move them off, then run git reset HEAD~1 on the park commit."
@@ -45,8 +56,10 @@ unpark() {
   fi
   git -C "$R" config --unset "branch.$P.splitPark" 2>/dev/null || true
   local B; B=$(cfg "branch.$P.splitTo")
-  git -C "$R" config --unset "branch.$P.splitTo" 2>/dev/null || true
-  [ -n "$B" ] && git -C "$R" update-ref -d "refs/drs-split/$B" 2>/dev/null || true
+  if [ -z "$want" ] || [ "$B" = "$want" ]; then
+    git -C "$R" config --unset "branch.$P.splitTo" 2>/dev/null || true
+    [ -n "$B" ] && git -C "$R" update-ref -d "refs/drs-split/$B" 2>/dev/null || true
+  fi
   [ -n "$park" ] && echo "restored: $(counts)" || echo "restored: nothing was parked"
 }
 
@@ -176,20 +189,20 @@ split)
   echo "parked: $parked"
   ;;
 
-# resume <R> [carry]: from a split branch, returns to its previous branch and
-# restores the parked edits. With "carry", uncommitted changes on the split
-# branch come along. On a parked branch itself, just restores.
+# resume <R>: from a split branch, returns to its previous branch and restores
+# the parked edits. Uncommitted changes on the split branch come along. On a
+# parked branch itself, just restores.
 resume)
-  R=$1; MODE=${2:-}
+  R=$1
   B=$(current); P=$(cfg "branch.$B.splitFrom")
   if [ -z "$P" ]; then
     [ -n "$(cfg "branch.$B.splitPark")" ] || die "$B isn't a split branch and has nothing parked"
     unpark; exit 0
   fi
   git -C "$R" show-ref --verify --quiet "refs/heads/$P" || die "$P no longer exists"
+  other_park "$P" "$B"
   carried=no
   if dirty; then
-    [ "$MODE" = carry ] || die "$B has uncommitted changes"
     git -C "$R" stash push -q -u -m "split-resume: carried from $B"
     carried=yes
   fi
@@ -203,21 +216,28 @@ resume)
     git -C "$R" stash pop -q || die "carried changes conflict with $P's parked edits. Resolve the marked files; the stash is kept until you drop it."
     echo "carried: yes"
   fi
-  unpark
+  unpark "$B"
   ;;
 
 # return <R> <B> <D>: after B has merged, returns to its previous branch,
-# restores the parked edits and merges origin/<D> into it.
+# restores the parked edits and merges origin/<D> into it. Uncommitted changes
+# on B come along, restored after the merge, since they build on B's work.
 return)
   R=$1; B=$2; D=$3
   P=$(cfg "branch.$B.splitFrom"); [ -n "$P" ] || die "$B isn't a split branch"
   git -C "$R" show-ref --verify --quiet "refs/heads/$P" || die "$P no longer exists"
+  [ "$(current)" = "$B" ] || [ "$(current)" = "$P" ] || die "switch to $B or $P first"
+  other_park "$P" "$B"
+  carried=no
   if [ "$(current)" = "$B" ]; then
-    dirty && die "$B has uncommitted changes"
+    if dirty; then
+      git -C "$R" stash push -q -u -m "split: carried from $B"
+      carried=yes
+    fi
     git -C "$R" switch -q "$P"
   fi
   [ "$(current)" = "$P" ] || die "switch to $B or $P first"
-  if [ -n "$(cfg "branch.$P.splitPark")" ]; then unpark; fi
+  if [ -n "$(cfg "branch.$P.splitPark")" ]; then unpark "$B"; fi
   if git -C "$R" merge-base --is-ancestor "origin/$D" HEAD; then
     echo "merged: already up to date"
   else
@@ -226,15 +246,23 @@ return)
     if ! git -C "$R" merge -q --no-edit "origin/$D"; then
       git -C "$R" merge --abort
       [ $held = yes ] && git -C "$R" stash pop -q
+      [ $carried = yes ] && die "merging origin/$D into $P conflicts. $P's edits are back; your changes from $B are in the stash. Merge it yourself, then git stash pop."
       die "merging origin/$D into $P conflicts. Your edits are back; merge it yourself."
     fi
     if [ $held = yes ] && ! git -C "$R" stash pop -q; then
+      [ $carried = yes ] && die "your edits conflict with origin/$D. Resolve the files marked, git stash drop, then git stash pop for your changes from $B."
       die "your edits conflict with origin/$D. Resolve the files marked; the stash is kept until you drop it."
     fi
     echo "merged: origin/$D"
   fi
-  git -C "$R" config --unset "branch.$P.splitTo" 2>/dev/null || true
+  if [ "$(cfg "branch.$P.splitTo")" = "$B" ]; then
+    git -C "$R" config --unset "branch.$P.splitTo" 2>/dev/null || true
+  fi
   git -C "$R" update-ref -d "refs/drs-split/$B" 2>/dev/null || true
+  if [ $carried = yes ]; then
+    git -C "$R" stash pop -q || die "your changes from $B conflict with $P's edits. Resolve the files marked; the stash is kept until you drop it."
+    echo "carried: yes"
+  fi
   ;;
 
 # state <dir>: one line per repo (the one at <dir> and its submodules) that
