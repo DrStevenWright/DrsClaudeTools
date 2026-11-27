@@ -68,6 +68,7 @@ const isPaneOpen = atom({ plugin: 'parked-items', key: 'isPaneOpen' } as const, 
 
 /** Opens the pane, and notes it's open so the reminder line steps aside. */
 async function openPane($: $) {
+  await refresh($)
   await $.ui.open({ id: PANE, title: TITLE })
   await update($, isPaneOpen, () => true)
 }
@@ -101,6 +102,8 @@ async function loadStored($: $): Promise<ParkedPoint[]> {
 /** Re-reads the store, so changes made in other sessions show here. */
 async function refresh($: $) {
   const stored = await loadStored($)
+  // Only a real change redraws.
+  if (JSON.stringify(stored) === JSON.stringify(await read($, points))) return
   await update($, points, () => stored)
 }
 
@@ -164,9 +167,12 @@ async function currentChat($: $): Promise<ParkedFrom> {
 const WRAPPERS =
   /<(command-name|command-message|command-args|local-command-stdout|local-command-stderr|local-command-caveat|system-reminder)>[\s\S]*?<\/\1>/g
 
+// A marker tag on its own, such as <artifact-content-authored-by-others/>.
+const MARKERS = /<[a-z][a-z0-9-]*\s*\/>/g
+
 /** A message's text without the command and system wrappers Claude Code adds. */
 function plainText(text: string) {
-  return text.replace(WRAPPERS, '').trim()
+  return text.replace(WRAPPERS, '').replace(MARKERS, '').trim()
 }
 
 // ---------- asking Claude what to park ----------
@@ -618,6 +624,10 @@ export const register: Register = (on, options) => {
         <Text> </Text>
         <Button key="park-new" onPress={() => startPark($, '', '')}>
           + Park
+        </Button>
+        <Text> </Text>
+        <Button key="refresh" label="Show items parked or changed in other chats" onPress={() => refresh($)}>
+          ↻ Refresh
         </Button>
       </Box>
     )

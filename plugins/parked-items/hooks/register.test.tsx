@@ -51,7 +51,7 @@ const RUN = { origin: { kind: 'composer' }, presentation: { isFullscreen: false,
 type Stored = { id: string; title: string; notes: string; from: { chat: string } }[]
 
 /** The engine beneath the mod, with what the mod sent Claude and stored. */
-function engine(on: On, reply = REPLY, seed: unknown[] = []) {
+function engine(on: On, reply = REPLY, seed: unknown[] = [], messages?: unknown[]) {
   const asked: string[] = []
   const store: Record<string, unknown> = seed.length > 0 ? { 'points-v1': seed } : {}
   let opened = 0
@@ -79,7 +79,7 @@ function engine(on: On, reply = REPLY, seed: unknown[] = []) {
   on('session.id', () => ({ value: 'session-1' }))
   on('session.root', () => ({ value: '/home/someone/example-project' }))
   on('session.messages', () => ({
-    value: [
+    value: messages ?? [
       // A slash command the user ran: only Claude Code's wrappers, nothing they wrote.
       {
         role: 'user',
@@ -119,6 +119,10 @@ function engine(on: On, reply = REPLY, seed: unknown[] = []) {
     tools,
     stored: () => (store['points-v1'] ?? []) as Stored,
     opened: () => opened,
+    /** Another chat saving the list. */
+    saveElsewhere: (list: unknown[]) => {
+      store['points-v1'] = list
+    },
   }
 }
 
@@ -451,4 +455,34 @@ test('when no message text is found, the empty Notes box says so', async ($, on)
   expect(JSON.stringify(await pane.find({ key: 'park-notes' }))).toContain('Optional details')
   await pane.unmount()
   await menu.unmount()
+})
+
+test('Refresh picks up items parked in another chat', async ($, on) => {
+  const world = engine(on, REPLY, [PARKED])
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.command.run({ command: 'parked', args: '', ...RUN })
+  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  expect(await pane.find({ type: 'Text', text: 'Parked in another chat' })).toBeUndefined()
+
+  world.saveElsewhere([{ ...PARKED, id: 'p2', title: 'Parked in another chat' }, PARKED])
+  await pane.press({ key: 'refresh' })
+  expect((await pane.find({ type: 'Text', text: 'Parked in another chat' }))?.text).toBe('Parked in another chat')
+  await pane.unmount()
+})
+
+test('the From line leaves out marker tags', async ($, on) => {
+  const world = engine(on, REPLY, [], [
+      {
+        role: 'user',
+        text: ['<artifact-content-authored-by-others/>', 'Plan the release'].join('\n'),
+        toolUses: [],
+        uuid: 'm1',
+      },
+    ])
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  await $.command.run({ command: 'park', args: 'Something', ...RUN })
+  const pane = await $.ui.mount({ ...PANE, surface: 'desktop' })
+  await pane.press({ key: 'park-save' })
+  expect(world.stored()[0]?.from.chat).toBe('Plan the release')
+  await pane.unmount()
 })
